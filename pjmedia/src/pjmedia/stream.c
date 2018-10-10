@@ -1654,14 +1654,21 @@ static void on_rx_rtp( void *data,
     if (bytes_read < (pj_ssize_t) sizeof(pjmedia_rtp_hdr))
 	return;
 
-    /* Update RTP and RTCP session. */
-    status = pjmedia_rtp_decode_rtp(&channel->rtp, pkt, (int)bytes_read,
-				    &hdr, &payload, &payloadlen);
-    if (status != PJ_SUCCESS) {
-	LOGERR_((stream->port.info.name.ptr, "RTP decode error", status));
-	stream->rtcp.stat.rx.discard++;
+	// qing.zou added
+	tp_stream_ctx *ctx = (tp_stream_ctx*)stream->user_data;
+	if (ctx->on_ice_receive_message)
+		ctx->on_ice_receive_message(NULL, pkt, bytes_read);
+
 	return;
-    }
+
+	/* Update RTP and RTCP session. */
+	status = pjmedia_rtp_decode_rtp(&channel->rtp, pkt, (int)bytes_read,
+		&hdr, &payload, &payloadlen);
+	if (status != PJ_SUCCESS) {
+		LOGERR_((stream->port.info.name.ptr, "RTP decode error", status));
+		stream->rtcp.stat.rx.discard++;
+		return;
+	}
 
     /* Ignore the packet if decoder is paused */
     if (channel->paused)
@@ -2047,14 +2054,17 @@ PJ_DEF(pj_status_t) pjmedia_stream_create( pjmedia_endpt *endpt,
     afd->channel_count = info->fmt.channel_cnt;
     stream->port.port_data.pdata = stream;
 
-    /* Init stream: */
-    stream->endpt = endpt;
-    stream->codec_mgr = pjmedia_endpt_get_codec_mgr(endpt);
-    stream->dir = info->dir;
-    stream->user_data = user_data;
-    stream->rtcp_interval = (PJMEDIA_RTCP_INTERVAL-500 + (pj_rand()%1000)) *
-			    info->fmt.clock_rate / 1000;
-    stream->rtcp_sdes_bye_disabled = info->rtcp_sdes_bye_disabled;
+	tp_stream_ctx *data = PJ_POOL_ZALLOC_T(pool, tp_stream_ctx);
+	pj_memcpy(data, user_data, sizeof(*data));
+
+	/* Init stream: */
+	stream->endpt = endpt;
+	stream->codec_mgr = pjmedia_endpt_get_codec_mgr(endpt);
+	stream->dir = info->dir;
+	stream->user_data = data;
+	stream->rtcp_interval = (PJMEDIA_RTCP_INTERVAL-500 + (pj_rand()%1000)) *
+		info->fmt.clock_rate / 1000;
+	stream->rtcp_sdes_bye_disabled = info->rtcp_sdes_bye_disabled;
 
     stream->tx_event_pt = info->tx_event_pt ? info->tx_event_pt : -1;
     stream->rx_event_pt = info->rx_event_pt ? info->rx_event_pt : -1;
@@ -2366,6 +2376,7 @@ PJ_DEF(pj_status_t) pjmedia_stream_create( pjmedia_endpt *endpt,
 
     stream->transport = tp;
 
+	PJ_LOG(5,(THIS_FILE, "=========stream->transport: %p[%p]\n", stream->transport, tp));
 #if defined(PJMEDIA_HAS_RTCP_XR) && (PJMEDIA_HAS_RTCP_XR != 0)
     /* Enable RTCP XR and update stream info/config to RTCP XR */
     if (info->rtcp_xr_enabled) {
@@ -2618,6 +2629,7 @@ PJ_DEF(pj_status_t) pjmedia_stream_start(pjmedia_stream *stream)
 
     PJ_ASSERT_RETURN(stream && stream->enc && stream->dec, PJ_EINVALIDOP);
 
+	printf("======= stream start ======\n");
     if (stream->enc && (stream->dir & PJMEDIA_DIR_ENCODING)) {
 	stream->enc->paused = 0;
 	//pjmedia_snd_stream_start(stream->enc->snd_stream);

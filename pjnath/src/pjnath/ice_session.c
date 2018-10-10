@@ -709,6 +709,7 @@ PJ_DEF(pj_status_t) pj_ice_sess_add_cand(pj_ice_sess *ice,
 					 unsigned comp_id,
 					 unsigned transport_id,
 					 pj_ice_cand_type type,
+					 pj_uint8_t is_relay,
 					 pj_uint16_t local_pref,
 					 const pj_str_t *foundation,
 					 const pj_sockaddr_t *addr,
@@ -738,13 +739,15 @@ PJ_DEF(pj_status_t) pj_ice_sess_add_cand(pj_ice_sess *ice,
     lcand->comp_id = (pj_uint8_t)comp_id;
     lcand->transport_id = (pj_uint8_t)transport_id;
     lcand->type = type;
+	lcand->is_relay = is_relay;
     pj_strdup(ice->pool, &lcand->foundation, foundation);
     lcand->prio = CALC_CAND_PRIO(ice, type, local_pref, lcand->comp_id);
     pj_sockaddr_cp(&lcand->addr, addr);
     pj_sockaddr_cp(&lcand->base_addr, base_addr);
     if (rel_addr == NULL)
 	rel_addr = base_addr;
-    pj_memcpy(&lcand->rel_addr, rel_addr, addr_len);
+	//pj_memcpy(&lcand->rel_addr, rel_addr, addr_len);
+	pj_memcpy(&lcand->rel_addr, base_addr, addr_len);
 
     /* Update transport data */
     for (i = 0; i < PJ_ARRAY_SIZE(ice->tp_data); ++i) {
@@ -1706,12 +1709,14 @@ PJ_DEF(pj_status_t) pj_ice_sess_create_check_list(
 	}
     }
 
-    /* This could happen if candidates have no matching address families */
-    if (clist->count == 0) {
-	LOG4((ice->obj_name,  "Error: no checklist can be created"));
-	pj_grp_lock_release(ice->grp_lock);
-	return PJ_ENOTFOUND;
-    }
+	PJ_LOG(4,(THIS_FILE,"======================clist->count = %d", clist->count));
+
+	/* This could happen if candidates have no matching address families */
+	if (clist->count == 0) {
+		LOG4((ice->obj_name,  "Error: no checklist can be created"));
+		pj_grp_lock_release(ice->grp_lock);
+		return PJ_ENOTFOUND;
+	}
 
     /* Sort checklist based on priority */
     sort_checklist(ice, clist);
@@ -2396,6 +2401,7 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
 	status = pj_ice_sess_add_cand(ice, check->lcand->comp_id, 
 				      msg_data->transport_id,
 				      PJ_ICE_CAND_TYPE_PRFLX,
+				      check->lcand->is_relay,
 				      65535, &foundation,
 				      &xaddr->sockaddr, 
 				      &check->lcand->base_addr, 

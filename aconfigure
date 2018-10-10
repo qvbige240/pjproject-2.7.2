@@ -6324,6 +6324,11 @@ if test "$enable_sound" = "no"; then
 else
 
  case $target in
+  *)
+	ac_pjmedia_snd=null
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Checking sound device backend... null sound" >&5
+$as_echo "Checking sound device backend... null sound" >&6; }
+	;;
   *android*)
 	LIBS="$LIBS -lOpenSLES"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Checking sound device backend... OpenSL ES" >&5

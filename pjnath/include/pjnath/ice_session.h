@@ -309,6 +309,9 @@ typedef struct pj_ice_sess_cand
      */
     pj_sockaddr		 rel_addr;
 
+	/* added by qing.zou */
+	pj_uint8_t		 is_relay;
+
 } pj_ice_sess_cand;
 
 
@@ -853,6 +856,7 @@ PJ_DECL(pj_status_t) pj_ice_sess_add_cand(pj_ice_sess *ice,
 					  unsigned comp_id,
 					  unsigned transport_id,
 					  pj_ice_cand_type type,
+					  pj_uint8_t is_relay,
 					  pj_uint16_t local_pref,
 					  const pj_str_t *foundation,
 					  const pj_sockaddr_t *addr,

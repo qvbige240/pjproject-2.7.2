@@ -173,9 +173,25 @@ PJ_DECL(pj_str_t) pj_strerror( pj_status_t statcode,
    \endverbatim
  * @hideinitializer
  */
-#define PJ_PERROR(level,arg)	do { \
+
+#if defined(PJ_CONFIG_ANDROID)
+
+	#include <android/log.h>
+	#define LOG_TAG "p2p"
+	#define PJ_PERROR_ANDROID(src, status, format, args...)   __android_log_print(ANDROID_LOG_ERROR,LOG_TAG, format, ##args)
+	
+	#define PJ_PERROR(level,arg)	do { \
+				   PJ_PERROR_ANDROID arg; \
+				} while (0)
+
+#else
+
+	#define PJ_PERROR(level,arg)	do { \
 				    pj_perror_wrapper_##level(arg); \
 				} while (0)
+
+#endif
+
 
 /**
  * A utility function to print error message pertaining to the specified error 

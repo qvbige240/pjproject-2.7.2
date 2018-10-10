@@ -132,7 +132,10 @@ typedef enum pj_ice_strans_op
 
     /** IP address change notification from STUN keep-alive operation.
      */
-    PJ_ICE_STRANS_OP_ADDR_CHANGE
+    PJ_ICE_STRANS_OP_ADDR_CHANGE,
+
+	/** Negotiation */
+	PJ_ICE_STRANS_OP_NEGOTIATION_TCP,
 
 } pj_ice_strans_op;
 
@@ -562,6 +565,9 @@ PJ_DECL(void) pj_ice_strans_cfg_copy(pj_pool_t *pool,
 				     const pj_ice_strans_cfg *src);
 
 
+pj_status_t ice_stun_tcp_reconn(pj_ice_strans *ice_st, pj_sockaddr_t *dst_addr);
+pj_status_t ice_stun_tcp(pj_ice_strans *ice_st, pj_uint16_t lport, pj_sockaddr_t *dst_addr);
+
 /**
  * Create and initialize the ICE stream transport with the specified
  * parameters. 
@@ -834,6 +840,10 @@ PJ_DECL(pj_ice_sess_role) pj_ice_strans_get_role(pj_ice_strans *ice_st);
  */
 PJ_DECL(pj_status_t) pj_ice_strans_change_role(pj_ice_strans *ice_st,
 					       pj_ice_sess_role new_role);
+
+
+// add...
+pj_ice_sess_cand* pj_ice_sess_local_srflx_cand_get(pj_ice_strans *ice_st);
 
 
 /**

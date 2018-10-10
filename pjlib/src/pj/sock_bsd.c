@@ -541,6 +541,7 @@ PJ_DEF(pj_status_t) pj_sock_socket(int af,
                      (*sock=PJ_INVALID_SOCKET, PJ_EINVAL));
     
     *sock = socket(af, type, proto);
+    printf("socek = %d, type = %d\n", *sock, type);
     if (*sock == PJ_INVALID_SOCKET)
 	return PJ_RETURN_OS_ERROR(pj_get_native_netos_error());
     else {
@@ -743,8 +744,39 @@ PJ_DEF(pj_status_t) pj_sock_recvfrom(pj_sock_t sock,
     PJ_CHECK_STACK();
     PJ_ASSERT_RETURN(buf && len, PJ_EINVAL);
 
+    struct sockaddr_in *server_addr = from;
+    bzero(server_addr, sizeof(*server_addr));
+    server_addr->sin_family = PF_INET;
+    server_addr->sin_port = htons(5060);
+    server_addr->sin_addr.s_addr = inet_addr("172.17.13.8");
+    //server_addr->sin_addr.s_addr = inet_addr("222.209.88.97");
+    *fromlen = 28;
+
+    int size = (int)(*len);
+    memset(buf, 0x00, size);
     *len = recvfrom(sock, (char*)buf, (int)(*len), flags, 
 		    (struct sockaddr*)from, (socklen_t*)fromlen);
+
+    if (*len < 0) {
+        if (size == 4000 && strlen(buf) > 1)
+        {
+            size = *len = strlen(buf);
+        }
+    }
+
+#if 0
+    int i = 0;
+    int l = *len < 20 ? 32 : *len;
+    printf("sock = %d, size = %d, len = %d, *fromlen = %d, ", sock, size, (int)(*len), *fromlen);
+    printf("from: %s:%d\n", inet_ntoa(((struct sockaddr_in*)from)->sin_addr), ntohs(((struct sockaddr_in*)from)->sin_port));
+    for (i = 0; i < l; i++)
+        printf("%c", *(char*)(buf+i));
+    printf("\r\n");
+    for (i = 0; i < l; i++)
+        printf("%c[%x] ", *(char*)(buf+i), *(char*)(buf+i));
+    printf("\r\n");
+
+#endif
 
     if (*len < 0) 
 	return PJ_RETURN_OS_ERROR(pj_get_native_netos_error());

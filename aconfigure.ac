@@ -701,6 +701,10 @@ if test "$enable_sound" = "no"; then
 else
  AC_SUBST(ac_pjmedia_audiodev_objs)
  case $target in
+  *)
+	ac_pjmedia_snd=null
+	AC_MSG_RESULT([Checking sound device backend... null sound])
+	;;
   *android*)
 	LIBS="$LIBS -lOpenSLES"
 	AC_MSG_RESULT([Checking sound device backend... OpenSL ES])

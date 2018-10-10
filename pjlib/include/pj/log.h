@@ -104,12 +104,31 @@ enum pj_log_decoration
    \endverbatim
  * @hideinitializer
  */
-#define PJ_LOG(level,arg)	do { \
+
+#if defined(PJ_CONFIG_ANDROID)
+
+	#include <android/log.h>
+	#define LOG_TAG "p2p"
+	//#define LOGD(...)   __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+	#define PJ_LOGD_ANDROID(src, format, args...)   __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG, format, ##args)
+	#define PJ_LOGE_ANDROID(src, format, args...)   __android_log_print(ANDROID_LOG_ERROR,LOG_TAG, format, ##args)
+
+	#define PJ_LOG(level,arg)	do { \
+				   if (level < 5) \
+				   PJ_LOGD_ANDROID arg; \
+				   else \
+				   ; \
+				} while (0)
+
+#else
+
+	#define PJ_LOG(level,arg)	do { \
 				    if (level <= pj_log_get_level()) { \
 					pj_log_wrapper_##level(arg); \
 				    } \
 				} while (0)
 
+#endif
 /**
  * Signature for function to be registered to the logging subsystem to
  * write the actual log message to some output device.

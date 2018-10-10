@@ -721,6 +721,784 @@ static void ice_failed_nego_cb(void *user_data)
 
 }
 
+#if 0
+// add...
+#include <errno.h> 
+#include <fcntl.h>
+#include <netinet/in.h>  
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+
+#if 0
+static int socket_nonblocking(int fd)
+{
+	int flags;
+	if ((flags = fcntl(fd, F_GETFL, NULL)) < 0) {
+		printf("fcntl(%d, F_GETFL)", fd);
+		return -1;
+	}
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		printf("fcntl(%d, F_GETFL)", fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int punch_demo(const char* ip, int port, int lport)
+{
+	struct sockaddr_in my_addr;
+	struct sockaddr_in servaddr;
+	int client;
+	int ret = 0;
+	int opt = 1;
+
+	client = socket(AF_INET, SOCK_STREAM, 0);
+	if (client == -1)
+	{
+		printf("socket error\n");
+		return -1;
+	}
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
+	servaddr.sin_addr.s_addr = inet_addr(ip);
+
+	socket_nonblocking(client);
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(client, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind local");  
+		exit(1);  
+	} else {  
+		printf("client local bind OK\n");  
+	} 
+
+	if (connect(client, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) 
+	{
+		printf("punch connect error\n");
+		close(client);
+		//exit(1);
+	}
+
+	printf("punch connected.\n");
+
+	close(client);
+	return 0;
+}
+
+static int client_demo(const char* ip, int port, int lport)
+{
+	struct sockaddr_in servaddr;
+	struct sockaddr_in my_addr;
+	int client;
+	char *sbuff = "hello wow hhhhhhhhhhhhhhhhhhhhhhhh hello!";
+	//char sbuff[255];
+	char recv_data[255];
+	int ret = 0;
+	int opt = 1;
+
+	client = socket(AF_INET, SOCK_STREAM, 0);
+	if (client == -1)
+	{
+		printf("socket error\n");
+		return -1;
+	}
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
+	//servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servaddr.sin_addr.s_addr = inet_addr(ip);
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(client, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind local");  
+		exit(1);  
+	} else {  
+		printf("client local bind OK\n");  
+	} 
+
+	if (connect(client, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) 
+	{
+		printf("connect socket error: %s(errno: %d)\n", strerror(errno),errno);
+		//printf("connect error!\n");
+		close(client);
+		exit(1);
+	}
+
+	printf("me: ");
+	//while (fgets(sbuff, sizeof(sbuff), stdin) != NULL)
+	while (1)
+	{
+		send(client, sbuff, strlen(sbuff)-1, 0);
+		if (strcmp(sbuff, "exit\n") == 0)
+			break;
+
+		ret = recv(client, recv_data, sizeof(recv_data), 0);
+		//fputs(recv_data, stdout);
+		if (ret > 0) {
+			recv_data[ret] = 0x00;
+			printf("recv: %s\n", recv_data);
+		}
+
+		memset(sbuff, 0, sizeof(sbuff));
+		memset(recv_data, 0, sizeof(recv_data));
+
+		printf("me: %s\n", sbuff);
+		sleep(3);
+	}
+
+	close(client);
+	return 0;
+}
+
+
+#define SO_REUSEPORT    15  
+
+#define MAXBUF			10240  
+#define MAXEPOLLSIZE	100  
+
+static int read_data(int connfd)
+{  
+	char recvbuf[MAXBUF + 1];  
+	int  ret, n;  
+	struct sockaddr_in client_addr;  
+	socklen_t cli_len = sizeof(client_addr);  
+
+	bzero(recvbuf, MAXBUF + 1);  
+
+	n = recv(connfd, recvbuf, MAXBUF, 0);
+	recvbuf[n] = '\0';
+	printf("recv msg from client[%d]: %s\n", connfd, recvbuf);
+
+	memset(recvbuf, 0x00, sizeof(recvbuf));
+	sprintf(recvbuf, "server accept fd: %d", connfd);
+	printf("new peer, id : %d\n", connfd);
+	send(connfd, recvbuf, strlen(recvbuf), 0);
+
+	fflush(stdout);  
+}
+
+static int tcp_accept(int listener, struct sockaddr_in my_addr)  
+{  
+	int connfd = -1;  
+	int ret = 0;  
+/*	int reuse = 1;  
+	char buf[16]; */ 
+	struct sockaddr_in peer_addr;  
+	socklen_t cli_len = sizeof(peer_addr);
+ 
+	if( (connfd = accept(listener, (struct sockaddr*) &peer_addr, (socklen_t*)&cli_len)) == -1){
+		printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
+		goto out;
+		//continue;
+	}
+
+	peer_addr.sin_family = PF_INET;  
+	printf("[%d]remote: %s, port: %d\n", connfd, inet_ntoa(peer_addr.sin_addr), ntohs(peer_addr.sin_port));  
+
+out:  
+	return connfd;  
+}
+
+static int socket_server(/*const char* ip, */unsigned int port)
+{  
+	int listener, kdpfd, nfds, n;  
+	socklen_t len;  
+	struct sockaddr_in my_addr; 
+	//unsigned int port = 4321;
+	struct epoll_event ev;  
+	struct epoll_event events[MAXEPOLLSIZE];  
+	int opt = 1;  
+	int ret = 0;  
+
+	if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1) {  
+		perror("socket");  
+		exit(1);  
+	} else {  
+		printf("socket OK\n");  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	} 
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(port);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(listener, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind");  
+		exit(1);  
+	} else {  
+		printf("IP bind OK\n");  
+	}  
+
+	if( listen(listener, 10) == -1){
+		printf("listen socket error: %s(errno: %d)\n",strerror(errno),errno);
+		exit(0);
+	}
+
+	kdpfd = epoll_create(MAXEPOLLSIZE);  
+
+	ev.events = EPOLLIN | EPOLLET;  
+	ev.data.fd = listener;  
+
+	if (epoll_ctl(kdpfd, EPOLL_CTL_ADD, listener, &ev) < 0) {  
+		fprintf(stderr, "epoll set insertion error: fd=%dn", listener);  
+		return -1;  
+	} else {  
+		printf("ep add OK\n");  
+	}  
+
+	while (1) {  
+
+		nfds = epoll_wait(kdpfd, events, 10000, -1);  
+		if (nfds == -1) {  
+			perror("epoll_wait");  
+			break;  
+		}  
+
+		for (n = 0; n < nfds; ++n) {
+			if (events[n].data.fd == listener) {  
+				printf("listener:%d\n", n);  
+				int new_sd;                 
+				struct epoll_event child_ev;  
+
+				new_sd = tcp_accept(listener, my_addr);  
+				child_ev.events = EPOLLIN;  
+				child_ev.data.fd = new_sd;  
+				if (epoll_ctl(kdpfd, EPOLL_CTL_ADD, new_sd, &child_ev) < 0) {  
+					fprintf(stderr, "epoll set insertion error: fd=%dn", new_sd);  
+					return -1;  
+				}  
+			} else {  
+				read_data(events[n].data.fd);  
+			}  
+		}  
+	}  
+	close(listener);  
+	return 0;  
+}
+#endif
+
+static int accepted = 0;
+static int connfd = -1; 
+
+int tcp_accept(int listener, struct sockaddr_in* raddr)  
+{  
+	//int connfd = -1; 
+	struct sockaddr_in remote_addr;  
+	socklen_t cli_len = sizeof(remote_addr);
+
+	if( (connfd = accept(listener, (struct sockaddr*) &remote_addr, (socklen_t*)&cli_len)) == -1){
+		printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
+		goto out;
+		//continue;
+	}
+
+	accepted = 1;
+	remote_addr.sin_family = PF_INET;  
+	printf("==============accept success [%d]remote: %s, port: %d\n", connfd, inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port));  
+	//memcpy(remote_addr, &remote_addr, sizeof(struct sockaddr_in));
+
+	struct sockaddr_in local_addr;
+	socklen_t addr_len = sizeof(local_addr);  
+	getsockname(connfd, (struct sockaddr *)&local_addr, &addr_len);
+	printf("==============accept success local: %s:%d\n", inet_ntoa(local_addr.sin_addr), ntohs(local_addr.sin_port));
+
+out:
+	return connfd;  
+}
+
+int write_data(int fd)
+{
+	int ret = 0;
+
+	//char sbuff[255];
+	char recv_data[255];
+
+	char *sbuff = "hello punch hole success!!!";
+	//printf("me: ");
+	//while (fgets(sbuff, sizeof(sbuff), stdin) != NULL)
+	while (1)
+	{
+		send(fd, sbuff, strlen(sbuff)-1, 0);
+		if (strcmp(sbuff, "exit\n") == 0)
+			break;
+
+		ret = recv(fd, recv_data, sizeof(recv_data), 0);
+		if (ret > 0) {
+			recv_data[ret] = 0x00;
+			printf("recv: %s\n", recv_data);
+		}
+
+		//memset(sbuff, 0, sizeof(sbuff));
+		memset(recv_data, 0, sizeof(recv_data));
+
+		sleep(3);
+		//printf("me: ");
+	}
+	return 0;
+}
+
+int read_data(int fd)
+{
+	int ret = 0;
+	char recv_data[256];
+
+	while (1) 
+	{
+		memset(recv_data, 0, sizeof(recv_data));
+		ret = recv(fd, recv_data, sizeof(recv_data), 0);
+		if (ret > 0) {
+			recv_data[ret] = 0x00;
+			printf("recv: %s\n", recv_data);
+		}
+
+		send(fd, recv_data, strlen(recv_data), 0);
+		if (strcmp(recv_data, "exit\n") == 0)
+			break;
+	}
+
+	return 0;
+}
+
+int client_listen(unsigned lport)
+{
+	int listener;
+	struct sockaddr_in my_addr;
+	int opt = 1;
+	int ret = 0;  
+
+	if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1) {  
+		perror("socket");  
+		exit(1);  
+	} else {  
+		printf("socket OK\n");  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	} 
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(listener, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind");  
+		exit(1);  
+	} else {  
+		printf("IP bind port[%d] OK\n", lport);  
+	}  
+
+	if(listen(listener, 10) == -1) {
+		printf("listen socket error: %s(errno: %d)\n",strerror(errno),errno);
+		exit(0);
+	}
+
+	while (1) {
+		tcp_accept(listener, NULL);
+		sleep(2);
+	}
+
+out:
+	printf("client punch closed!\n");
+	close(listener);
+	return 0;
+}
+
+int client_connect(const char* ip, int port, int lport)
+{
+	struct sockaddr_in my_addr;
+	struct sockaddr_in servaddr;
+	int client;
+	int opt = 1;
+	int ret = 0;
+
+start:
+	client = socket(AF_INET, SOCK_STREAM, 0);
+	if (client == -1)
+	{
+		printf("socket error\n");
+		return -1;
+	}
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(client, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind local!!");  
+		exit(1);  
+	} else {  
+		printf("client local bind[%d] OK\n", lport);  
+	}
+
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
+	servaddr.sin_addr.s_addr = inet_addr(ip);
+
+	while (1) {
+		if (connect(client, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) 
+		{
+			printf("socket connect error: %s(errno: %d)\n",strerror(errno), errno);
+			usleep(100000);
+			close(client);
+			if (accepted) {
+				printf("==============accept success \n\n");
+				write_data(connfd);
+			}
+			usleep(100000);
+			goto start;
+			//printf("connect error\n");
+			//continue;
+			//exit(1);
+		}
+		else
+		{
+			printf("\n\n====================================\n");
+			struct sockaddr_in addr;
+			socklen_t addr_len = sizeof(addr);  
+			getsockname(client, (struct sockaddr *)&addr, &addr_len);
+			printf("======= connected sock: %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+			struct sockaddr_in peeraddr;
+			socklen_t peer_len = sizeof(peeraddr);  
+			getpeername(client, (struct sockaddr *)&peeraddr, &peer_len);
+			printf("======= connected peer: %s:%d\n\n", inet_ntoa(peeraddr.sin_addr), ntohs(peeraddr.sin_port));
+
+			break;
+		}
+	}
+
+	write_data(client);
+
+	close(client);
+	return 0;
+}
+
+typedef struct thread_info {
+	//char*		rip;
+	//unsigned	rport;
+	unsigned	lport;
+} thread_info_t;
+
+void *client_listen_thread(void* arg)
+{
+	thread_info_t *info = (thread_info_t*)arg;
+
+	client_listen(info->lport);
+
+	return NULL;
+}
+
+int client_demo(const char* rip, int rport, unsigned local_port)
+{
+	struct sockaddr_in peer_addr; 
+
+	int ret = 0;
+	void* thread_result;
+	pthread_t pth_test1;
+
+	thread_info_t info = {0};
+	info.lport = local_port;
+
+	ret = pthread_create(&pth_test1, NULL, client_listen_thread, (void*)&info);
+	if (ret != 0)
+		printf("create thread \'pth_test1\' failed");
+
+	sleep(1);
+
+	printf("client start connect to %s:%d ...\n", rip, rport);
+	client_connect(rip, rport, local_port);
+
+	pthread_join(pth_test1, &thread_result);
+
+	return 0;
+}
+
+static int server_punch(const char* ip, int port, int lport)
+{
+	struct sockaddr_in my_addr;
+	struct sockaddr_in servaddr;
+	int client;
+	int ret = 0;
+	int opt = 1;
+
+start:
+	client = socket(AF_INET, SOCK_STREAM, 0);
+	if (client == -1)
+	{
+		printf("socket error\n");
+		return -1;
+	}
+	//socket_nonblocking(client);
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	ret = setsockopt(client, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);  
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(client, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind local");  
+		exit(1);  
+	} else {  
+		printf("server local bind[%d] OK\n", lport);  
+	} 
+
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
+	servaddr.sin_addr.s_addr = inet_addr(ip);
+	while (1) {
+		if (connect(client, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) 
+		{
+			perror("punch connect error\n");
+			usleep(100000);
+			close(client);
+			if (accepted) {
+				printf("==============accept success \n\n");
+				read_data(connfd);
+			}
+			usleep(100000);
+			goto start;
+			//continue;
+			//exit(1);
+		}
+		else
+		{
+			printf("\n\n====================================\n");
+			struct sockaddr_in localaddr;
+			socklen_t addr_len = sizeof(localaddr);  
+			getsockname(client, (struct sockaddr *)&localaddr, &addr_len);
+			printf("======= server punch connected sock: %s:%d\n", inet_ntoa(localaddr.sin_addr), ntohs(localaddr.sin_port));
+
+			struct sockaddr_in peeraddr;
+			socklen_t peer_len = sizeof(peeraddr);  
+			getpeername(client, (struct sockaddr *)&peeraddr, &peer_len);
+			printf("======= server punch connected peer: %s:%d\n\n", inet_ntoa(peeraddr.sin_addr), ntohs(peeraddr.sin_port));
+
+			break;
+		}
+
+	}
+
+	read_data(client);
+
+	printf("punch connected.\n");
+	usleep(10000);
+
+	close(client);
+	return 0;
+}
+
+int server_listen(unsigned int lport)
+{  
+	int listener; 
+	struct sockaddr_in my_addr; 
+	int opt = 1;;  
+	int ret = 0;  
+
+	if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1) {  
+		perror("socket");  
+		exit(1);  
+	} else {  
+		printf("socket OK\n");  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	}  
+
+	ret = setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));  
+	if (ret) {  
+		exit(1);  
+	} 
+
+	bzero(&my_addr, sizeof(my_addr));  
+	my_addr.sin_family = PF_INET;  
+	my_addr.sin_port = htons(lport);
+	my_addr.sin_addr.s_addr = INADDR_ANY;  
+	if (bind(listener, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {  
+		perror("bind");  
+		exit(1);  
+	} else {  
+		printf("IP bind port[%d] OK\n", lport);  
+	}  
+
+	if(listen(listener, 10) == -1) {
+		printf("listen socket error: %s(errno: %d)\n",strerror(errno),errno);
+		exit(0);
+	}
+
+	while (1) {
+		tcp_accept(listener, NULL);
+		sleep(2);
+	}
+
+	close(listener);  
+
+	return 0;  
+}
+
+void *server_listen_thread(void* arg)
+{
+	thread_info_t *info = (thread_info_t*)arg;
+
+	server_listen(info->lport);
+
+	return NULL;
+}
+
+int server_demo(const char* client_ip, int client_port, int lport)
+{
+	int ret = 0;
+	void* thread_result;
+	pthread_t pth_test1;
+
+	thread_info_t info = {0};
+	info.lport = lport;
+
+	ret = pthread_create(&pth_test1, NULL, server_listen_thread, (void*)&info);
+	if (ret != 0)
+		printf("create thread \'pth_test1\' failed");
+
+	sleep(1);
+
+	server_punch(client_ip, client_port, lport);
+
+	pthread_join(pth_test1, &thread_result);
+
+	return 0;
+}
+
+static int start_punch(char* remote_ip, pj_uint16_t remote_port, pj_uint16_t base_port)
+{
+	char *rip = remote_ip;
+	pj_uint16_t rport = remote_port;
+	pj_uint16_t lbaseport = base_port;
+
+	if (pjsua_var.tcp_server) {
+		printf("========== server ==========\n");
+		printf("ip: %s, port: %d, lbport: %d\n", rip, rport, lbaseport);
+		server_demo(rip, rport, lbaseport);
+	} else {
+		printf("========== client ==========\n");
+		printf("ip: %s, port: %d, lbport: %d\n", rip, rport, lbaseport);
+		client_demo(rip, rport, lbaseport);
+	}
+
+	return 0;
+}
+
+typedef struct tcp_punch_info {
+	char		rip[PJ_INET6_ADDRSTRLEN+10];
+	unsigned	rport;
+	unsigned	lport;
+} tcp_punch_info_t;
+
+void *punch_thread(void* arg)
+{
+	pthread_detach(pthread_self());
+
+	tcp_punch_info_t *info = (tcp_punch_info_t*)arg;
+
+	char *rip = info->rip;
+	pj_uint16_t rport = info->rport;
+	pj_uint16_t lbaseport = info->lport;
+
+	start_punch(rip, rport, lbaseport);
+
+
+	return NULL;
+}
+
+static tcp_punch_info_t info = {0};
+static int punch_hole(char* remote_ip, pj_uint16_t remote_port, pj_uint16_t base_port)
+{
+	int ret = 0;
+	//void* thread_result;
+	pthread_t pth_test1;
+
+	//info.rip = remote_ip;
+	memcpy(info.rip, remote_ip, sizeof(info.rip));
+	info.rport = remote_port;
+	info.lport = base_port;
+
+	ret = pthread_create(&pth_test1, NULL, punch_thread, (void*)&info);
+	if (ret != 0)
+		printf("create thread \'pth_test1\' failed");
+
+	return 0;
+}
+#endif
+
+static int reconn_cnt = 0;
+static cand_addr_t ca = {0};
+static int punch_hole_addr(void *ctx, void *data)
+{
+	cand_addr_t *c = (cand_addr_t*)data;
+
+	//pj_memcpy()
+	memcpy(&ca, c, sizeof(cand_addr_t));
+
+	return 0;
+}
+
+
 /* This callback is called when ICE negotiation completes */
 static void on_ice_complete(pjmedia_transport *tp, 
 			    pj_ice_strans_op op,
@@ -746,46 +1524,160 @@ static void on_ice_complete(pjmedia_transport *tp,
             pjmedia_transport_info_init(&tpinfo);
             pjmedia_transport_get_info(call_med->tp, &tpinfo);
             pj_sockaddr_cp(&call_med->rtp_addr, &tpinfo.sock_info.rtp_addr_name);
-        } else {
-	    call_med->state = PJSUA_CALL_MEDIA_ERROR;
-	    call_med->dir = PJMEDIA_DIR_NONE;
-	    if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
-		/* Defer the callback to a timer */
-		pjsua_schedule_timer2(&ice_failed_nego_cb,
-				      (void*)(pj_ssize_t)call->index, 1);
-	    }
-        }
-	/* Check if default ICE transport address is changed */
-        call->reinv_ice_sent = PJ_FALSE;
-	pjsua_call_schedule_reinvite_check(call, 0);
-	break;
-    case PJ_ICE_STRANS_OP_KEEP_ALIVE:
-    case PJ_ICE_STRANS_OP_ADDR_CHANGE:
-	if (result != PJ_SUCCESS) {
-	    PJ_PERROR(4,(THIS_FILE, result,
-		         "ICE keep alive failure for transport %d:%d",
-		         call->index, call_med->idx));
-	}
-        if (pjsua_var.ua_cfg.cb.on_call_media_transport_state) {
-            pjsua_med_tp_state_info info;
 
-            pj_bzero(&info, sizeof(info));
-            info.med_idx = call_med->idx;
-            info.state = call_med->tp_st;
-            info.status = result;
-            info.ext_info = &op;
-	    (*pjsua_var.ua_cfg.cb.on_call_media_transport_state)(
-                call->index, &info);
-        }
-	if (pjsua_var.ua_cfg.cb.on_ice_transport_error &&
-	    op == PJ_ICE_STRANS_OP_KEEP_ALIVE)
-	{
-	    pjsua_call_id id = call->index;
-	    (*pjsua_var.ua_cfg.cb.on_ice_transport_error)(id, op, result,
-							  NULL);
+		
+			//cand_addr_t ca = {0};
+			//cand_address_get(call_med->tp_orig, &ca, 1);
+
+			pj_uint16_t lbaseport, lport, rbaseport, rport;
+			char lbaseip[PJ_INET6_ADDRSTRLEN+10];
+			char lip[PJ_INET6_ADDRSTRLEN+10];
+			char rbaseip[PJ_INET6_ADDRSTRLEN+10];
+			char rip[PJ_INET6_ADDRSTRLEN+10];
+
+			printf("laddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.lcand_addr)));
+			printf("lbaseaddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.lbase_addr)));
+			printf("raddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.rcand_addr)));
+			printf("rbaseaddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.rbase_addr)));
+			//printf("laddr: %s\n", inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.lcand_addr)));
+			//printf("raddr: %s\n", inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.rcand_addr)));
+
+			strcpy(lip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.lcand_addr)));
+			strcpy(lbaseip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.lbase_addr)));
+			strcpy(rip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.rcand_addr)));
+			strcpy(rbaseip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca.rbase_addr)));
+			lport = pj_sockaddr_get_port(&ca.lcand_addr);
+			lbaseport = pj_sockaddr_get_port(&ca.lbase_addr);
+			rport = pj_sockaddr_get_port(&ca.rcand_addr);
+			rbaseport = pj_sockaddr_get_port(&ca.rbase_addr);
+
+			PJ_LOG(4,(THIS_FILE, "ss====== local  addr: %s:%d, base: %s:%d", lip, lport, lbaseip, lbaseport));
+			PJ_LOG(4,(THIS_FILE, "ss======remote  addr: %s:%d, base: %s:%d\n", rip, rport, rbaseip, rbaseport));
+
+			if (call && pjsua_var.ua_cfg.cb.on_ice_negotiation_success)
+				(*pjsua_var.ua_cfg.cb.on_ice_negotiation_success)(call_med->tp, NULL);
+
+			int is_relay = ice_is_relay(call_med->tp_orig, 1);
+			if (is_relay == 0) {
+				PJ_LOG(4,(THIS_FILE, "====================================\n"));
+				PJ_LOG(4,(THIS_FILE, "========== start stun tcp ==========\n"));
+				//pjmedia_ice_tcp(call_med->tp_orig, &ca, 0);
+				if (pjsua_var.tcp_server) {
+					pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
+				} else {
+					pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
+				}
+				PJ_LOG(4,(THIS_FILE, "========== end stun tcp ==========\n"));
+				return;
+			} else {
+				PJ_LOG(4,(THIS_FILE, "============ is relay ============\n"));
+
+				if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)
+					(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, NULL);
+			}
+		
+#if 0
+			
+
+				//lport += 2;
+				//rport += 2;
+				if (pjsua_var.tcp_server) {
+
+					PJ_LOG(4,(THIS_FILE, "========== server ==========\n"));
+					PJ_LOG(4,(THIS_FILE, "ip: %s, port: %d, lbport: %d\n", rip, rport, lbaseport));
+					//punch_demo(rip, rport, lport);
+					//socket_server(lport);
+					server_demo(rip, rport, lbaseport);
+
+				} else {
+					//sleep(2);
+
+					PJ_LOG(4,(THIS_FILE, "========== client ==========\n"));
+					PJ_LOG(4,(THIS_FILE, "ip: %s, port: %d, lbport: %d\n", rip, rport, lbaseport));
+					client_demo(rip, rport, lbaseport);
+				}
+
+#endif
+
+		} else {
+
+			PJ_LOG(4,(THIS_FILE, "========== ice failed at %s:%d ==========\n", __FILE__, __LINE__));
+
+
+			call_med->state = PJSUA_CALL_MEDIA_ERROR;
+			call_med->dir = PJMEDIA_DIR_NONE;
+			if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
+				/* Defer the callback to a timer */
+				pjsua_schedule_timer2(&ice_failed_nego_cb,
+					(void*)(pj_ssize_t)call->index, 1);
+			}
+		}
+		/* Check if default ICE transport address is changed */
+		call->reinv_ice_sent = PJ_FALSE;
+		pjsua_call_schedule_reinvite_check(call, 0);
+		break;
+	case PJ_ICE_STRANS_OP_NEGOTIATION_TCP:
+		if (result != PJ_SUCCESS) {
+			PJ_PERROR(4,(THIS_FILE, result, "====ICE TCP connect failed"));
+			//.......
+
+			if (reconn_cnt++ < 3) {
+
+				pj_thread_sleep(20);
+				PJ_LOG(4,(THIS_FILE, "========== re-connect stun tcp ==========\n"));
+				//pj_status_t ret = pjmedia_ice_tcp(call_med->tp_orig, &ca, 1);
+				pj_status_t ret = pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
+				//pj_status_t ret = pjmedia_ice_tcp(call_med->tp_orig, &ca, 0);
+
+				PJ_LOG(4,(THIS_FILE, "========== end stun tcp ==========\n"));
+
+				if (ret == PJ_SUCCESS)
+					break;
+			}
+
+
+			call_med->state = PJSUA_CALL_MEDIA_ERROR;
+			call_med->dir = PJMEDIA_DIR_NONE;
+			if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
+				/* Defer the callback to a timer */
+				pjsua_schedule_timer2(&ice_failed_nego_cb,
+					(void*)(pj_ssize_t)call->index, 1);
+			}
+		} else {
+			if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)
+				(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, NULL);
+
+		}
+		/* Check if default ICE transport address is changed */
+		call->reinv_ice_sent = PJ_FALSE;
+		pjsua_call_schedule_reinvite_check(call, 0);
+		break;
+	case PJ_ICE_STRANS_OP_KEEP_ALIVE:
+	case PJ_ICE_STRANS_OP_ADDR_CHANGE:
+		if (result != PJ_SUCCESS) {
+			PJ_PERROR(4,(THIS_FILE, result,
+				"ICE keep alive failure for transport %d:%d",
+				call->index, call_med->idx));
+		}
+		if (pjsua_var.ua_cfg.cb.on_call_media_transport_state) {
+			pjsua_med_tp_state_info info;
+
+			pj_bzero(&info, sizeof(info));
+			info.med_idx = call_med->idx;
+			info.state = call_med->tp_st;
+			info.status = result;
+			info.ext_info = &op;
+			(*pjsua_var.ua_cfg.cb.on_call_media_transport_state)(
+				call->index, &info);
+		}
+		if (pjsua_var.ua_cfg.cb.on_ice_transport_error &&
+			op == PJ_ICE_STRANS_OP_KEEP_ALIVE)
+		{
+			pjsua_call_id id = call->index;
+			(*pjsua_var.ua_cfg.cb.on_ice_transport_error)(id, op, result, NULL);
+		}
+		break;
 	}
-	break;
-    }
 }
 
 
@@ -1007,8 +1899,12 @@ static pj_status_t create_ice_media_transport(
 
     pj_bzero(&ice_cb, sizeof(pjmedia_ice_cb));
     ice_cb.on_ice_complete = &on_ice_complete;
-    pj_ansi_snprintf(name, sizeof(name), "icetp%02d", call_med->idx);
-    call_med->tp_ready = PJ_EPENDING;
+	//ice_cb.start_tcp_punch = start_punch;	//...
+	//ice_cb.start_tcp_punch = punch_hole;	//...
+	ice_cb.get_hole_addr = punch_hole_addr;
+
+	pj_ansi_snprintf(name, sizeof(name), "icetp%02d", call_med->idx);
+	call_med->tp_ready = PJ_EPENDING;
 
     comp_cnt = 1;
     if (PJMEDIA_ADVERTISE_RTCP && !acc_cfg->ice_cfg.ice_no_rtcp)

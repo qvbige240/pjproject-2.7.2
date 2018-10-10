@@ -620,12 +620,15 @@ pj_status_t pjsua_aud_channel_update(pjsua_call_media *call_med,
 	si->use_ka = pjsua_var.acc[call->acc_id].cfg.use_stream_ka;
 #endif
 
+	tp_stream_ctx param = {0};
+	param.on_ice_receive_message = pjsua_var.ua_cfg.cb.on_ice_receive_message;
+
 	/* Create session based on session info. */
 	status = pjmedia_stream_create(pjsua_var.med_endpt, NULL, si,
-				       call_med->tp, NULL,
-				       &call_med->strm.a.stream);
+			call_med->tp, &param,
+			&call_med->strm.a.stream);
 	if (status != PJ_SUCCESS) {
-	    goto on_return;
+		goto on_return;
 	}
 
 	/* Start stream */

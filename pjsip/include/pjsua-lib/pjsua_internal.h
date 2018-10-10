@@ -458,6 +458,9 @@ struct pjsua_data
     /* List of outbound proxies: */
     pjsip_route_hdr	 outbound_proxy;
 
+	/* Server or client for tcp */
+	pj_bool_t		tcp_server;
+
     /* Account: */
     unsigned		 acc_cnt;	     /**< Number of accounts.	*/
     pjsua_acc_id	 default_acc;	     /**< Default account ID	*/

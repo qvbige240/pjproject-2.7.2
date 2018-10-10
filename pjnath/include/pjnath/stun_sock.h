@@ -87,7 +87,9 @@ typedef enum pj_stun_sock_op
     /**
      * IP address change notification from the keep-alive operation.
      */
-    PJ_STUN_SOCK_MAPPED_ADDR_CHANGE
+	 PJ_STUN_SOCK_MAPPED_ADDR_CHANGE,
+
+	 PJ_STUN_SOCK_TCP_CONN_COMPLETE,
 
 
 } pj_stun_sock_op;
@@ -332,6 +334,17 @@ PJ_DECL(const char*) pj_stun_sock_op_name(pj_stun_sock_op op);
  */
 PJ_DECL(void) pj_stun_sock_cfg_default(pj_stun_sock_cfg *cfg);
 
+// add
+PJ_DEF(pj_status_t) pj_stun_tcp_sock_reconnect(pj_stun_sock *stcp_sock,
+											   const pj_sockaddr_t *dst_addr);
+PJ_DEF(pj_status_t) pj_stun_tcp_sock_create( pj_stun_config *stun_cfg,
+											const pj_sockaddr_t *dst_addr,
+											pj_uint16_t lport,
+											int af,
+											const pj_stun_sock_cb *cb,
+											const pj_stun_sock_cfg *cfg,
+											void *user_data,
+											pj_stun_sock **p_stun_sock);
 
 /**
  * Create the STUN transport using the specified configuration. Once
@@ -456,6 +469,12 @@ PJ_DECL(pj_grp_lock_t *) pj_stun_sock_get_grp_lock(pj_stun_sock *stun_sock);
 PJ_DECL(pj_status_t) pj_stun_sock_get_info(pj_stun_sock *stun_sock,
 					   pj_stun_sock_info *info);
 
+//add ...
+PJ_DEF(pj_status_t) pj_stun_sock_send( pj_stun_sock *tcp_sock,
+									  pj_ioqueue_op_key_t *send_key,
+									  const void *pkt,
+									  unsigned pkt_len,
+									  unsigned flag);
 
 /**
  * Send a data to the specified address. This function may complete

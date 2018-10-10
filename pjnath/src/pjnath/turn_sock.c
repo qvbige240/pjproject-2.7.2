@@ -599,54 +599,61 @@ static pj_bool_t on_data_read(pj_activesock_t *asock,
     turn_sock = (pj_turn_sock*) pj_activesock_get_user_data(asock);
     pj_grp_lock_acquire(turn_sock->grp_lock);
 
-    if (status == PJ_SUCCESS && turn_sock->sess && !turn_sock->is_destroying) {
-	/* Report incoming packet to TURN session, repeat while we have
-	 * "packet" in the buffer (required for stream-oriented transports)
-	 */
-	unsigned pkt_len;
+	if (status == PJ_SUCCESS && turn_sock->sess && !turn_sock->is_destroying) {
+		/* Report incoming packet to TURN session, repeat while we have
+		 * "packet" in the buffer (required for stream-oriented transports)
+		 */
+		unsigned pkt_len;
 
-	//PJ_LOG(5,(turn_sock->pool->obj_name, 
-	//	  "Incoming data, %lu bytes total buffer", size));
+		//const pj_uint8_t *tmp = (const pj_uint8_t*)data;
+		//printf(" data: %02X %02X %02X %02X, ",tmp[0], tmp[1], tmp[2], tmp[3]);
+		//PJ_LOG(4,(turn_sock->pool->obj_name, 
+		//	  "Incoming data, %lu bytes total buffer", size));
 
-	while ((pkt_len=has_packet(turn_sock, data, size)) != 0) {
-	    pj_size_t parsed_len;
-	    //const pj_uint8_t *pkt = (const pj_uint8_t*)data;
+		*remainder = size;
 
-	    //PJ_LOG(5,(turn_sock->pool->obj_name, 
-	    //	      "Packet start: %02X %02X %02X %02X", 
-	    //	      pkt[0], pkt[1], pkt[2], pkt[3]));
+		while ((pkt_len=has_packet(turn_sock, data, size)) != 0) {
+			pj_size_t parsed_len;
+			//const pj_uint8_t *pkt = (const pj_uint8_t*)data;
 
-	    //PJ_LOG(5,(turn_sock->pool->obj_name, 
-	    //	      "Processing %lu bytes packet of %lu bytes total buffer",
-	    //	      pkt_len, size));
+			//PJ_LOG(5,(turn_sock->pool->obj_name, 
+			//	      "Packet start: %02X %02X %02X %02X", 
+			//	      pkt[0], pkt[1], pkt[2], pkt[3]));
 
-	    parsed_len = (unsigned)size;
-	    pj_turn_session_on_rx_pkt(turn_sock->sess, data,  size, &parsed_len);
+			//PJ_LOG(5,(turn_sock->pool->obj_name, 
+			//	"Processing %lu bytes packet of %lu bytes total buffer",
+			//	pkt_len, size));
 
-	    /* parsed_len may be zero if we have parsing error, so use our
-	     * previous calculation to exhaust the bad packet.
-	     */
-	    if (parsed_len == 0)
-		parsed_len = pkt_len;
+			//printf("Packet start: %02X %02X %02X %02X, ",pkt[0], pkt[1], pkt[2], pkt[3]);
+			//printf(" Processing %lu / %lu \n", pkt_len, size);
 
-	    if (parsed_len < (unsigned)size) {
-		*remainder = size - parsed_len;
-		pj_memmove(data, ((char*)data)+parsed_len, *remainder);
-	    } else {
-		*remainder = 0;
-	    }
-	    size = *remainder;
+			parsed_len = (unsigned)size;
+			pj_turn_session_on_rx_pkt(turn_sock->sess, data,  size, &parsed_len);
 
-	    //PJ_LOG(5,(turn_sock->pool->obj_name, 
-	    //	      "Buffer size now %lu bytes", size));
+			/* parsed_len may be zero if we have parsing error, so use our
+			* previous calculation to exhaust the bad packet.
+			*/
+			if (parsed_len == 0)
+				parsed_len = pkt_len;
+
+			if (parsed_len < (unsigned)size) {
+				*remainder = size - parsed_len;
+				pj_memmove(data, ((char*)data)+parsed_len, *remainder);
+			} else {
+				*remainder = 0;
+			}
+			size = *remainder;
+
+			//PJ_LOG(5,(turn_sock->pool->obj_name, 
+			//	      "Buffer size now %lu bytes", size));
+		}
+	} else if (status != PJ_SUCCESS && 
+		turn_sock->conn_type != PJ_TURN_TP_UDP) 
+	{
+		sess_fail(turn_sock, "TCP connection closed", status);
+		ret = PJ_FALSE;
+		goto on_return;
 	}
-    } else if (status != PJ_SUCCESS && 
-	       turn_sock->conn_type != PJ_TURN_TP_UDP) 
-    {
-	sess_fail(turn_sock, "TCP connection closed", status);
-	ret = PJ_FALSE;
-	goto on_return;
-    }
 
 on_return:
     pj_grp_lock_release(turn_sock->grp_lock);

@@ -106,6 +106,15 @@ static void	   ice_rx_data(pj_ice_sess *ice,
 
 /* STUN socket callbacks */
 /* Notification when incoming packet has been received. */
+static pj_bool_t stun_tcp_rx_data(pj_stun_sock *stun_sock,
+								 void *pkt,
+								 unsigned pkt_len,
+								 const pj_sockaddr_t *src_addr,
+								 unsigned addr_len);
+static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
+									pj_stun_sock_op op,
+									pj_status_t status);
+/* Notification when incoming packet has been received. */
 static pj_bool_t stun_on_rx_data(pj_stun_sock *stun_sock,
 				 void *pkt,
 				 unsigned pkt_len,
@@ -158,11 +167,16 @@ typedef struct pj_ice_strans_comp
 	pj_stun_sock	*sock;		/**< STUN transport.		*/
     } stun[PJ_ICE_MAX_STUN];
 
-    struct {
-	pj_turn_sock	*sock;		/**< TURN relay transport.	*/
-	pj_bool_t	 log_off;	/**< TURN loggin off?		*/
-	unsigned	 err_cnt;	/**< TURN disconnected count.	*/
-    } turn[PJ_ICE_MAX_TURN];
+	struct {
+		pj_stun_sock	*sock;		/**< STUN tcp transport.		*/
+	} tcp;
+	pj_bool_t			tcp_conn;
+
+	struct {
+		pj_turn_sock	*sock;		/**< TURN relay transport.	*/
+		pj_bool_t	 log_off;	/**< TURN loggin off?		*/
+		unsigned	 err_cnt;	/**< TURN disconnected count.	*/
+	} turn[PJ_ICE_MAX_TURN];
 
     pj_bool_t		 creating;	/**< Is creating the candidates?*/
     unsigned		 cand_cnt;	/**< # of candidates/aliaes.	*/
@@ -385,6 +399,7 @@ static pj_status_t add_update_turn(pj_ice_strans *ice_st,
     if (cand == NULL) {
 	cand = &comp->cand_list[comp->cand_cnt];
 	cand->type = PJ_ICE_CAND_TYPE_RELAYED;
+		cand->is_relay = 1;
 	cand->status = PJ_EPENDING;
 	cand->local_pref = RELAY_PREF;
 	cand->transport_id = tp_id;
@@ -456,6 +471,49 @@ static pj_bool_t ice_cand_equals(pj_ice_sess_cand *lcand,
     return PJ_TRUE;
 }
 
+//add ...
+pj_status_t ice_stun_tcp(pj_ice_strans *ice_st, pj_uint16_t lport, pj_sockaddr_t *dst_addr)
+{
+	pj_status_t status;
+	sock_user_data *data;
+	pj_stun_sock_cb stun_sock_cb;
+	pj_ice_strans_stun_cfg *stun_cfg = &ice_st->cfg.stun_tp[0];
+	pj_stun_sock_cfg *sock_cfg  = &stun_cfg->cfg;
+	pj_ice_strans_comp *comp = ice_st->comp[0];
+
+	/* Initialize STUN socket callback */
+	pj_bzero(&stun_sock_cb, sizeof(stun_sock_cb));
+	stun_sock_cb.on_rx_data = &stun_tcp_rx_data;
+	stun_sock_cb.on_status = &stun_tcp_on_status;
+	stun_sock_cb.on_data_sent = &stun_on_data_sent;
+
+	/* Allocate and initialize STUN socket data */
+	data = PJ_POOL_ZALLOC_T(ice_st->pool, sock_user_data);
+	data->comp = comp;
+	data->transport_id = CREATE_TP_ID(TP_STUN, 10);	// 0 1 10
+
+	/* Create the STUN transport */
+	status = pj_stun_tcp_sock_create(&ice_st->cfg.stun_cfg, dst_addr, lport,
+		pj_AF_INET(), &stun_sock_cb, sock_cfg, data, &comp->tcp.sock);
+	if (status != PJ_SUCCESS)
+		PJ_LOG(3, (ice_st->obj_name, "tcp_sock_create failed"));
+	//else
+	//	comp->tcp_conn = PJ_TRUE;
+
+	return status;
+}
+
+pj_status_t ice_stun_tcp_reconn(pj_ice_strans *ice_st, pj_sockaddr_t *dst_addr)
+{
+	pj_status_t status;
+	pj_ice_strans_comp *comp = ice_st->comp[0];
+
+	status = pj_stun_tcp_sock_reconnect(comp->tcp.sock, dst_addr);
+	if (status != PJ_SUCCESS)
+		PJ_LOG(3, (ice_st->obj_name, "tcp_sock_reconnect failed"));
+
+	return status;
+}
 
 static pj_status_t add_stun_and_host(pj_ice_strans *ice_st,
 				     pj_ice_strans_comp *comp,
@@ -500,6 +558,7 @@ static pj_status_t add_stun_and_host(pj_ice_strans *ice_st,
     /* Prepare srflx candidate with pending status. */
     cand = &comp->cand_list[comp->cand_cnt];
     cand->type = PJ_ICE_CAND_TYPE_SRFLX;
+	cand->is_relay = 0;
     cand->status = PJ_EPENDING;
     cand->local_pref = SRFLX_PREF;
     cand->transport_id = CREATE_TP_ID(TP_STUN, idx);
@@ -1151,7 +1210,7 @@ PJ_DEF(pj_status_t) pj_ice_strans_init_ice(pj_ice_strans *ice_st,
 
 	    /* Add the candidate */
 	    status = pj_ice_sess_add_cand(ice_st->ice, comp->comp_id,
-					  cand->transport_id, cand->type,
+					  cand->transport_id, cand->type, cand->is_relay,
 					  cand->local_pref,
 					  &cand->foundation, &cand->addr,
 					  &cand->base_addr,  &cand->rel_addr,
@@ -1328,6 +1387,30 @@ PJ_DEF(pj_status_t) pj_ice_strans_change_role( pj_ice_strans *ice_st,
     return pj_ice_sess_change_role(ice_st->ice, new_role);
 }
 
+// add...
+pj_ice_sess_cand* pj_ice_sess_local_srflx_cand_get(pj_ice_strans *ice_st)
+{
+	int i = 0;
+	pj_ice_sess_cand *lcand = NULL;
+	pj_ice_sess *ice = ice_st->ice;
+
+	for (i = 0; i < ice->lcand_cnt; i++) {
+		if (ice->lcand[i].type == PJ_ICE_CAND_TYPE_SRFLX) {
+			lcand = &ice->lcand[i];
+			return lcand;
+		}
+
+		if (ice->lcand[i].type == PJ_ICE_CAND_TYPE_HOST) {
+			lcand = &ice->lcand[i];
+		}
+	}
+
+	printf("\n======= local srflx cand error and use host cand =======\n");
+	printf("======= local srflx cand error and use host cand =======\n\n");
+
+	return lcand;
+}
+
 /*
  * Start ICE processing !
  */
@@ -1463,21 +1546,37 @@ PJ_DEF(pj_status_t) pj_ice_strans_sendto( pj_ice_strans *ice_st,
      */
     pj_grp_lock_acquire(ice_st->grp_lock);
 
-    /* If ICE is available, send data with ICE, otherwise send with the
-     * default candidate selected during initialization.
-     *
-     * https://trac.pjsip.org/repos/ticket/1416:
-     * Once ICE has failed, also send data with the default candidate.
-     */
-    if (ice_st->ice && ice_st->state == PJ_ICE_STRANS_STATE_RUNNING) {
-	status = pj_ice_sess_send_data(ice_st->ice, comp_id, data, data_len);
-	
+	if (comp->tcp_conn) {
+		sock_user_data *user_data = (sock_user_data*) pj_stun_sock_get_user_data(comp->tcp.sock);
+		if (user_data == NULL) {
+			pj_grp_lock_release(ice_st->grp_lock);
+			return PJ_FALSE;
+		}
+
+		pj_uint8_t transport_id = user_data->transport_id;
+		unsigned tp_typ = GET_TP_TYPE(transport_id);
+		if (tp_typ == TP_STUN) {
+			status = pj_stun_sock_send(comp->tcp.sock, NULL, data, (unsigned)data_len, 0);
+			pj_grp_lock_release(ice_st->grp_lock);
+			return status;
+		}
+	}
+
+	/* If ICE is available, send data with ICE, otherwise send with the
+	* default candidate selected during initialization.
+	*
+	* https://trac.pjsip.org/repos/ticket/1416:
+	* Once ICE has failed, also send data with the default candidate.
+	*/
+	if (ice_st->ice && ice_st->state == PJ_ICE_STRANS_STATE_RUNNING) {
+		status = pj_ice_sess_send_data(ice_st->ice, comp_id, data, data_len);
+
+		pj_grp_lock_release(ice_st->grp_lock);
+
+		return status;
+	} 
+
 	pj_grp_lock_release(ice_st->grp_lock);
-	
-	return status;
-    } 
-    
-    pj_grp_lock_release(ice_st->grp_lock);
 
     def_cand = &comp->cand_list[comp->default_cand];
     
@@ -1539,12 +1638,13 @@ PJ_DEF(pj_status_t) pj_ice_strans_sendto( pj_ice_strans *ice_st,
     		dest_addr_len = dst_addr_len;
     	    }
 
-	    status = pj_stun_sock_sendto(comp->stun[tp_idx].sock, NULL, data,
-					 (unsigned)data_len, 0, dest_addr,
-					 dest_addr_len);
-	    return (status==PJ_SUCCESS||status==PJ_EPENDING) ?
-		    PJ_SUCCESS : status;
-	}
+			if (comp->tcp_conn) 
+				status = pj_stun_sock_send(comp->tcp.sock, NULL, data, (unsigned)data_len, 0);
+			else
+				status = pj_stun_sock_sendto(comp->stun[tp_idx].sock, NULL, data,
+					(unsigned)data_len, 0, dest_addr, dest_addr_len);
+			return (status==PJ_SUCCESS||status==PJ_EPENDING) ? PJ_SUCCESS : status;
+		}
 
     } else
 	return PJ_EINVALIDOP;
@@ -1710,13 +1810,12 @@ static pj_status_t ice_tx_pkt(pj_ice_sess *ice,
     	    dest_addr_len = dst_addr_len;
     	}
 
-	status = pj_stun_sock_sendto(comp->stun[tp_idx].sock, NULL,
-				     pkt, (unsigned)size, 0,
-				     dest_addr, dest_addr_len);
-    } else {
-	pj_assert(!"Invalid transport ID");
-	status = PJ_EINVALIDOP;
-    }
+		status = pj_stun_sock_sendto(comp->stun[tp_idx].sock, NULL,
+			pkt, (unsigned)size, 0, dest_addr, dest_addr_len);
+	} else {
+		pj_assert(!"Invalid transport ID");
+		status = PJ_EINVALIDOP;
+	}
 
     return (status==PJ_SUCCESS||status==PJ_EPENDING) ? PJ_SUCCESS : status;
 }
@@ -1740,6 +1839,39 @@ static void ice_rx_data(pj_ice_sess *ice,
 				 src_addr, src_addr_len);
     }
 }
+
+/* Notification when incoming packet has been received from
+ * the STUN socket.
+ */
+static pj_bool_t stun_tcp_rx_data(pj_stun_sock *stun_sock,
+								 void *pkt,
+								 unsigned pkt_len,
+								 const pj_sockaddr_t *src_addr,
+								 unsigned addr_len)
+{
+	sock_user_data *data;
+	pj_ice_strans_comp *comp;
+	pj_ice_strans *ice_st;
+
+	data = (sock_user_data*) pj_stun_sock_get_user_data(stun_sock);
+	if (data == NULL) {
+		/* We have disassociated ourselves from the STUN socket */
+		return PJ_FALSE;
+	}
+
+	comp = data->comp;
+	ice_st = comp->ice_st;
+
+	pj_grp_lock_add_ref(ice_st->grp_lock);
+
+	if (ice_st->cb.on_rx_data) {
+		(*ice_st->cb.on_rx_data)(ice_st, comp->comp_id, pkt, pkt_len,
+			src_addr, addr_len);
+	}
+
+	return pj_grp_lock_dec_ref(ice_st->grp_lock) ? PJ_FALSE : PJ_TRUE;
+}
+
 
 /* Notification when incoming packet has been received from
  * the STUN socket.
@@ -1807,6 +1939,51 @@ static pj_bool_t stun_on_data_sent(pj_stun_sock *stun_sock,
 }
 
 /* Notification when the status of the STUN transport has changed. */
+static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
+								pj_stun_sock_op op,
+								pj_status_t status)
+{
+	sock_user_data *data;
+	pj_ice_strans_comp *comp;
+	pj_ice_strans *ice_st;
+	pj_time_val t;
+	unsigned msec;
+
+	pj_assert(status != PJ_EPENDING);
+
+	data = (sock_user_data*) pj_stun_sock_get_user_data(tcp_sock);
+	comp = data->comp;
+	ice_st = comp->ice_st;
+	pj_ice_strans_cb cb = ice_st->cb;
+
+	pj_grp_lock_add_ref(ice_st->grp_lock);
+
+	pj_gettimeofday(&t);
+	PJ_TIME_VAL_SUB(t, ice_st->start_time);
+	msec = PJ_TIME_VAL_MSEC(t);
+
+	switch (op) {
+		case PJ_STUN_SOCK_TCP_CONN_COMPLETE:
+			if (cb.on_ice_complete) {
+				if (status == PJ_SUCCESS) {
+					PJ_LOG(4,(ice_st->obj_name, "TCP success after %ds:%03d", msec/1000, msec%1000));
+					comp->tcp_conn = PJ_TRUE;
+				} else {
+					PJ_LOG(4,(ice_st->obj_name, "TCP failed after %ds:%03d", msec/1000, msec%1000));
+				}
+
+				(*cb.on_ice_complete)(ice_st, PJ_ICE_STRANS_OP_NEGOTIATION_TCP, status);
+			}
+			break;
+		default:
+			PJ_LOG(4, (ice_st->obj_name, "tcp_on_status STUN status unknown"));
+			break;
+	}
+
+	return pj_grp_lock_dec_ref(ice_st->grp_lock)? PJ_FALSE : PJ_TRUE;
+}
+
+/* Notification when the status of the STUN transport has changed. */
 static pj_bool_t stun_on_status(pj_stun_sock *stun_sock,
 				pj_stun_sock_op op,
 				pj_status_t status)
@@ -1852,6 +2029,10 @@ static pj_bool_t stun_on_status(pj_stun_sock *stun_sock,
     tp_idx = GET_TP_IDX(data->transport_id);
 
     switch (op) {
+		case PJ_STUN_SOCK_TCP_CONN_COMPLETE:
+			if (status == PJ_SUCCESS)
+				comp->tcp_conn = PJ_TRUE;
+			break;
     case PJ_STUN_SOCK_DNS_OP:
 	if (status != PJ_SUCCESS) {
 	    /* May not have cand, e.g. when error during init */
@@ -1923,7 +2104,7 @@ static pj_bool_t stun_on_status(pj_stun_sock *stun_sock,
 			pj_sockaddr_cmp(&comp->cand_list[i].addr,
 					&info.mapped_addr) == 0)
 		    {
-			dup = PJ_TRUE;
+					//dup = PJ_TRUE;	//...
 			break;
 		    }
 		}

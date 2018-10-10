@@ -39,6 +39,12 @@
 PJ_BEGIN_DECL
 
 
+typedef struct tp_stream_ctx
+{
+
+	void (*on_ice_receive_message)(void *data, void *pkt, pj_ssize_t bytes_read);
+} tp_stream_ctx;
+
 /**
  * @defgroup PJMED_STRM Streams
  * @ingroup PJMEDIA_PORT

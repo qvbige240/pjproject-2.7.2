@@ -712,6 +712,10 @@ PJ_DEF(pj_status_t) pj_activesock_send( pj_activesock_t *asock,
 	status = send_remaining(asock, send_key);
 	if (status == PJ_SUCCESS) {
 	    *size = whole;
+		} else {
+			pj_ssize_t tmp = asock->send_data.len - asock->send_data.sent;
+			*size = asock->send_data.sent;
+			PJ_LOG(3, ("", "====== send_remaining size: %d failed!!!", tmp));
 	}
 	return status;
 

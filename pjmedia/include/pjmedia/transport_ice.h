@@ -74,6 +74,10 @@ typedef struct pjmedia_ice_cb
 			        pj_status_t status,
 				void *user_data);
 
+
+	int (*start_tcp_punch)(char* remote_ip, pj_uint16_t remote_port, pj_uint16_t base_port);
+	int (*get_hole_addr)(void *ctx, void *data);
+
 } pjmedia_ice_cb;
 
 
@@ -235,6 +239,21 @@ PJ_DECL(pj_status_t) pjmedia_ice_create3(pjmedia_endpt *endpt,
 					 unsigned options,
 					 void *user_data,
 					 pjmedia_transport **p_tp);
+
+// add...
+typedef struct cand_addr
+{
+	pj_sockaddr			lcand_addr;
+	pj_sockaddr			lbase_addr;
+	pj_sockaddr			rcand_addr;
+	pj_sockaddr			rbase_addr;
+} cand_addr_t;
+
+int cand_address_get(pjmedia_transport *tp, cand_addr_t* ca, unsigned id);
+
+int ice_is_relay(pjmedia_transport *tp, unsigned id);
+
+pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id);
 
 /**
  * Get the group lock for the ICE media transport.

@@ -2296,13 +2296,16 @@ PJ_DEF(pj_status_t) pjsua_call_answer2(pjsua_call_id call_id,
     if (reason && reason->slen == 0)
 	reason = NULL;
 
-    /* Create response message */
-    status = pjsip_inv_answer(call->inv, code, reason, NULL, &tdata);
-    if (status != PJ_SUCCESS) {
-	pjsua_perror(THIS_FILE, "Error creating response",
-		     status);
-	goto on_return;
-    }
+	// add...
+	pjsua_var.tcp_server = PJ_TRUE;
+
+	/* Create response message */
+	status = pjsip_inv_answer(call->inv, code, reason, NULL, &tdata);
+	if (status != PJ_SUCCESS) {
+		pjsua_perror(THIS_FILE, "Error creating response",
+			status);
+		goto on_return;
+	}
 
     /* Call might have been disconnected if application is answering with
      * 200/OK and the media failed to start.

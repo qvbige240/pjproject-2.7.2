@@ -306,6 +306,52 @@ PJ_DEF(pj_status_t) pjmedia_ice_create3(pjmedia_endpt *endpt,
     return PJ_SUCCESS;
 }
 
+// add...
+pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id)
+{
+	pj_status_t status;
+	struct transport_ice *tp_ice = (struct transport_ice*)tp;
+	pj_uint16_t lport = pj_sockaddr_get_port(&ca->lbase_addr);
+	//pj_sockaddr_t *dst_addr = &ca->rcand_addr;
+ 	pj_sockaddr_t *dst_addr = NULL;
+	int same_subnet = 0;
+ 
+ 	/* Compare addresses */
+ 	int result = pj_memcmp(pj_sockaddr_get_addr(&ca->lcand_addr),
+ 		pj_sockaddr_get_addr(&ca->rcand_addr),
+ 		pj_sockaddr_get_addr_len(&ca->lcand_addr));
+ 	if (result != 0)
+ 		dst_addr = &ca->rcand_addr;
+ 	else {
+ 		//pj_thread_sleep(50);
+ 		pj_uint16_t rbaseport;
+ 		char rbaseip[PJ_INET6_ADDRSTRLEN+10];
+ 
+ 		rbaseport = pj_sockaddr_get_port(&ca->rbase_addr);
+ 		strcpy(rbaseip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&ca->rbase_addr)));
+ 		if (id == 1) {		/* server */
+ 			same_subnet = vpk_lan_server(lport+100, rbaseport+100);
+ 		} else {
+ 			vpk_lan_client(rbaseip, rbaseport+100, lport+100);
+ 		} 
+ 
+ 		dst_addr = &ca->rbase_addr;
+ 	}
+ 
+ 	if (same_subnet) {		/* server */
+ 		status = ice_stun_tcp(tp_ice->ice_st, lport, NULL);
+ 	} else {
+		status = ice_stun_tcp(tp_ice->ice_st, lport, dst_addr);
+	}
+
+	//if (id == 11)
+	//	status = ice_stun_tcp_reconn(tp_ice->ice_st, dst_addr);
+	//else
+	//	status = ice_stun_tcp(tp_ice->ice_st, lport, dst_addr);
+
+	return status;
+}
+
 PJ_DEF(pj_grp_lock_t *) pjmedia_ice_get_grp_lock(pjmedia_transport *tp)
 {
     PJ_ASSERT_RETURN(tp, NULL);
@@ -862,8 +908,50 @@ static pj_status_t parse_cand(const char *obj_name,
     } else if (pj_stricmp2(&token, "srflx") == 0) {
 	cand->type = PJ_ICE_CAND_TYPE_SRFLX;
 
-    } else if (pj_stricmp2(&token, "relay") == 0) {
-	cand->type = PJ_ICE_CAND_TYPE_RELAYED;
+		/* added by qing.zou */
+		/* raddr */
+		found_idx = pj_strtok(orig_input, &delim, &token, found_idx + token.slen);
+		if (found_idx == orig_input->slen) {
+			TRACE__((obj_name, "Expecting ICE priority in candidate"));
+			goto on_return;
+		}
+
+		/* Host */
+		found_idx = pj_strtok(orig_input, &delim, &host, found_idx + token.slen);
+		if (found_idx == orig_input->slen) {
+			TRACE__((obj_name, "Expecting ICE host in candidate"));
+			goto on_return;
+		}
+		/* Detect address family */
+		if (pj_strchr(&host, ':'))
+			af = pj_AF_INET6();
+		else
+			af = pj_AF_INET();
+		/* Assign base address */
+		if (pj_sockaddr_init(af, &cand->base_addr, &host, 0)) {
+			TRACE__((obj_name, "Invalid ICE candidate address"));
+			goto on_return;
+		}
+
+		/* rport */
+		found_idx = pj_strtok(orig_input, &delim, &host, found_idx + host.slen);
+		if (found_idx == orig_input->slen) {
+			TRACE__((obj_name, "Expecting ICE priority in candidate"));
+			goto on_return;
+		}
+
+		/* Port */
+		found_idx = pj_strtok(orig_input, &delim, &host, found_idx + host.slen);
+		if (found_idx == orig_input->slen) {
+			TRACE__((obj_name, "Expecting ICE port number in candidate"));
+			goto on_return;
+		}
+		pj_sockaddr_set_port(&cand->base_addr, (pj_uint16_t)pj_strtoul(&host));
+
+
+	} else if (pj_stricmp2(&token, "relay") == 0) {
+		cand->type = PJ_ICE_CAND_TYPE_RELAYED;
+		cand->is_relay = 1;
 
     } else if (pj_stricmp2(&token, "prflx") == 0) {
 	cand->type = PJ_ICE_CAND_TYPE_PRFLX;
@@ -1071,6 +1159,11 @@ static pj_status_t verify_ice_sdp(struct transport_ice *tp_ice,
 	sdp_state->ice_mismatch = PJ_TRUE;
     }
 
+	// just for test....
+	if (pj_ice_strans_sess_is_complete(tp_ice->ice_st)) 
+	{
+		sdp_state->ice_mismatch = PJ_FALSE;
+	}
 
     /* Detect remote restarting session */
     if (pj_ice_strans_has_sess(tp_ice->ice_st) &&
@@ -1401,9 +1494,68 @@ static pj_status_t start_ice(struct transport_ice *tp_ice,
 	cand_cnt++;
     }
 
-    /* Start ICE */
-    return pj_ice_strans_start_ice(tp_ice->ice_st, &ufrag_attr->value, 
-				   &pwd_attr->value, cand_cnt, cand);
+
+	//...add
+	pj_uint16_t lbaseport, lport, rbaseport, rport;
+	char lbaseip[PJ_INET6_ADDRSTRLEN+10];
+	char lip[PJ_INET6_ADDRSTRLEN+10];
+	char rbaseip[PJ_INET6_ADDRSTRLEN+10];
+	char rip[PJ_INET6_ADDRSTRLEN+10];
+
+	pj_ice_sess_cand *remote_cand = NULL;
+	pj_ice_sess_cand *local_cand = NULL;
+
+	for (i = 0; i < cand_cnt; i++)
+	{
+		if (cand[i].type == PJ_ICE_CAND_TYPE_SRFLX) {
+			remote_cand = &cand[i];
+			break;
+		}
+
+		if (cand[i].type == PJ_ICE_CAND_TYPE_HOST) {
+			remote_cand = &cand[i];
+		}
+	}
+	if (i == cand_cnt) {
+		printf("\n======= remote srflx cand error and use host cand =======\n");
+		printf("======= remote srflx cand error and use host cand =======\n\n");
+	}
+
+	local_cand = pj_ice_sess_local_srflx_cand_get(tp_ice->ice_st);
+	if (!local_cand) {
+		printf("======= local srflx cand error =======\n");
+	}	
+
+	printf("laddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&local_cand->addr)));
+	printf("lbaseaddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&local_cand->base_addr)));
+	printf("raddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&remote_cand->addr)));
+	printf("rbaseaddr: %s\n", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&remote_cand->base_addr)));
+
+	strcpy(lip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&local_cand->addr)));
+	strcpy(lbaseip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&local_cand->base_addr)));
+	strcpy(rip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&remote_cand->addr)));
+	strcpy(rbaseip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&remote_cand->base_addr)));
+	lbaseport = pj_sockaddr_get_port(&local_cand->base_addr);
+	lport = pj_sockaddr_get_port(&local_cand->addr);
+	rbaseport = pj_sockaddr_get_port(&remote_cand->base_addr);
+	rport = pj_sockaddr_get_port(&remote_cand->addr);
+	printf("====== local  addr: %s:%d, base: %s:%d\n", lip, lport, lbaseip, lbaseport);
+	printf("======remote  addr: %s:%d, base: %s:%d\n", rip, rport, rbaseip, rbaseport);
+
+	//tp_ice->cb.start_tcp_punch(rip, rport, lbaseport);
+
+	cand_addr_t ca = {0};
+	pj_sockaddr_cp(&ca.lbase_addr, &local_cand->base_addr);
+	pj_sockaddr_cp(&ca.lcand_addr, &local_cand->addr);
+	pj_sockaddr_cp(&ca.rbase_addr, &remote_cand->base_addr);
+	pj_sockaddr_cp(&ca.rcand_addr, &remote_cand->addr);
+
+	tp_ice->cb.get_hole_addr(NULL, (void*)&ca);
+
+
+	/* Start ICE */
+	return pj_ice_strans_start_ice(tp_ice->ice_st, &ufrag_attr->value, 
+		&pwd_attr->value, cand_cnt, cand);
 }
 
 
@@ -1708,6 +1860,76 @@ static pj_status_t transport_get_info(pjmedia_transport *tp,
     }
 
     return PJ_SUCCESS;
+}
+
+// add...
+int cand_address_get(pjmedia_transport *tp, cand_addr_t *ca, unsigned id)
+{
+	struct transport_ice *tp_ice = (struct transport_ice*)tp;
+	const pj_ice_sess_check *chk;
+	unsigned i = id;
+
+	unsigned comp_cnt = pj_ice_strans_get_running_comp_cnt(tp_ice->ice_st);
+	if (i > comp_cnt) 
+		return -1;
+
+	chk = pj_ice_strans_get_valid_pair(tp_ice->ice_st, i);
+	if (chk) {
+		pj_sockaddr_cp(&ca->lbase_addr, &chk->lcand->base_addr);
+		pj_sockaddr_cp(&ca->lcand_addr, &chk->lcand->addr);
+		pj_sockaddr_cp(&ca->rcand_addr, &chk->rcand->addr);
+	}
+
+	return 0;
+}
+
+int ice_is_relay(pjmedia_transport *tp, unsigned id)
+{
+	int ret = -1;
+	struct transport_ice *tp_ice = (struct transport_ice*)tp;
+	const pj_ice_sess_check *chk;
+	unsigned i = id;
+
+	unsigned comp_cnt = pj_ice_strans_get_running_comp_cnt(tp_ice->ice_st);
+	if (i > comp_cnt) 
+		return ret;
+
+	chk = pj_ice_strans_get_valid_pair(tp_ice->ice_st, i);
+
+	printf("\n======== valid_pair type: [%d %d] =========\n", chk->lcand->type, chk->rcand->type);
+	printf("laddr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->lcand->addr)));
+	printf("%d\n", pj_sockaddr_get_port(&chk->lcand->addr));
+
+	printf("lbaseaddr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->lcand->base_addr)));
+	printf("%d\n", pj_sockaddr_get_port(&chk->lcand->base_addr));
+
+	if (&chk->lcand->rel_addr) {
+		printf("lreladdr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->lcand->rel_addr)));
+		printf("%d\n", pj_sockaddr_get_port(&chk->lcand->rel_addr));
+	} else {
+		printf("lreladdr: null");
+	}
+
+	printf("raddr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->rcand->addr)));
+	printf("%d\n", pj_sockaddr_get_port(&chk->rcand->addr));
+
+	//printf("rbaseaddr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->rcand->base_addr)));
+	//printf("%d\n", pj_sockaddr_get_port(&chk->rcand->base_addr));
+
+	//printf("rreladdr: %s:", pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(&chk->rcand->rel_addr)));
+	//printf("%d\n", pj_sockaddr_get_port(&chk->rcand->rel_addr));
+
+
+	if (chk) {
+		if (chk->lcand->type == PJ_ICE_CAND_TYPE_RELAYED 
+			|| chk->rcand->type == PJ_ICE_CAND_TYPE_RELAYED
+			|| (chk->lcand->type == PJ_ICE_CAND_TYPE_PRFLX && chk->lcand->is_relay) 
+			|| (chk->rcand->type == PJ_ICE_CAND_TYPE_PRFLX && chk->rcand->is_relay))
+			return 1;
+		else
+			return 0;
+	}
+	return ret;
 }
 
 

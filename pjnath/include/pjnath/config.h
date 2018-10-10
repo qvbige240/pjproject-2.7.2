@@ -323,7 +323,8 @@
  * Default: 32
  */
 #ifndef PJ_ICE_MAX_CHECKS
-#   define PJ_ICE_MAX_CHECKS			    32
+//#   define PJ_ICE_MAX_CHECKS			    32
+#   define PJ_ICE_MAX_CHECKS			    48				// qing.zou
 #endif
 
 

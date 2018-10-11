@@ -3,6 +3,7 @@
 bin
 build
 lib
+final_install
 build.mak
 config.log
 config.status

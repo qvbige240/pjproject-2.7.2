@@ -1,0 +1,13 @@
+*.swp
+*~
+bin
+build
+lib
+build.mak
+config.log
+config.status
+pjlib/include/pj/compat/m_auto.h
+pjlib/include/pj/compat/os_auto.h
+pjmedia/include/pjmedia-codec/config_auto.h
+pjmedia/include/pjmedia/config_auto.h
+pjsip/include/pjsip/sip_autoconf.h

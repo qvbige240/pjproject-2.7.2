@@ -174,7 +174,7 @@ PJ_DECL(pj_str_t) pj_strerror( pj_status_t statcode,
  * @hideinitializer
  */
 
-#if defined(PJ_CONFIG_ANDROID)
+#if defined(PJ_CONFIG_ANDROID) && PJ_CONFIG_ANDROID==1
 
 	#include <android/log.h>
 	#define LOG_TAG "p2p"

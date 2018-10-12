@@ -695,7 +695,10 @@ static pj_status_t turn_on_send_pkt(pj_turn_session *sess,
 	show_err(turn_sock, "socket send()", status);
     }
 
-    return status;
+	/* return sended buffer size */
+	status = len;
+
+	return status;
 }
 
 

@@ -1618,8 +1618,7 @@ PJ_DEF(pj_status_t) pj_ice_strans_sendto( pj_ice_strans *ice_st,
 					 (const pj_uint8_t*)data,
 					 (unsigned)data_len,
 					 dst_addr, dst_addr_len);
-	    return (status==PJ_SUCCESS||status==PJ_EPENDING) ?
-		    PJ_SUCCESS : status;
+		return (status==PJ_SUCCESS||status==PJ_EPENDING) ? PJ_SUCCESS : status;
 	} else {
     	    const pj_sockaddr_t *dest_addr;
     	    unsigned dest_addr_len;

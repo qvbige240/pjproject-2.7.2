@@ -6,6 +6,14 @@ export BINDIR := ../bin
 
 RULES_MAK := $(PJDIR)/build/rules.mak
 
+export ICE_LIB:=libice-$(TARGET_NAME)$(LIBEXT)
+
+ifeq ($(PJ_SHARED_LIBRARIES),)
+else
+export ICE_SONAME := libice.$(SHLIB_SUFFIX)
+export ICE_SHLIB := $(ICE_SONAME).$(PJ_VERSION_MAJOR)
+endif
+
 
 ###############################################################################
 # Gather all flags.
@@ -20,6 +28,19 @@ export _CXXFLAGS:= $(_CFLAGS) $(CC_CXXFLAGS) $(OS_CXXFLAGS) $(M_CXXFLAGS) \
 		   $(HOST_CXXFLAGS) $(CXXFLAGS)
 export _LDFLAGS := $(CC_LDFLAGS) $(OS_LDFLAGS) $(M_LDFLAGS) $(HOST_LDFLAGS) \
 		   $(APP_LDFLAGS) $(APP_LDLIBS) $(LDFLAGS) 
+
+###############################################################################
+# Defines for building ice
+#
+export ICE_SRCDIR = ../src/pjsua
+export ICE_OBJS += $(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
+            ice_client.o
+export ICE_CFLAGS += $(PJ_CFLAGS) $(CFLAGS)
+export ICE_CXXFLAGS += $(PJ_CXXFLAGS) $(CFLAGS)
+export ICE_LDFLAGS += $(PJ_LDFLAGS) $(PJ_LDLIBS) $(LDFLAGS)
+#export PJSUA_EXE:=demo-$(TARGET_NAME)$(HOST_EXE)
+
+
 
 ###############################################################################
 # Defines for building PJSUA

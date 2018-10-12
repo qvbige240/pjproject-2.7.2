@@ -651,13 +651,14 @@ static pj_status_t send_remaining(pj_activesock_t *asock,
     do {
 	pj_ssize_t size;
 
-	size = sd->len - sd->sent;
-	status = pj_ioqueue_send(asock->key, send_key, 
-				 sd->data+sd->sent, &size, sd->flags);
-	if (status != PJ_SUCCESS) {
-	    /* Pending or error */
-	    break;
-	}
+		size = sd->len - sd->sent;
+		status = pj_ioqueue_send(asock->key, send_key, 
+			sd->data+sd->sent, &size, sd->flags);
+		if (status != PJ_SUCCESS) {
+			PJ_LOG(3, ("", "======[%d] send_remaining size: %d failed at pj_ioqueue_send!!!", status, size));
+			/* Pending or error */
+			break;
+		}
 
 	sd->sent += size;
 	if (sd->sent == sd->len) {
@@ -708,16 +709,25 @@ PJ_DEF(pj_status_t) pj_activesock_send( pj_activesock_t *asock,
 	asock->send_data.flags = flags;
 	send_key->activesock_data = &asock->send_data;
 
-	/* Try again */
-	status = send_remaining(asock, send_key);
-	if (status == PJ_SUCCESS) {
-	    *size = whole;
-		} else {
-			pj_ssize_t tmp = asock->send_data.len - asock->send_data.sent;
-			*size = asock->send_data.sent;
-			PJ_LOG(3, ("", "====== send_remaining size: %d failed!!!", tmp));
-	}
-	return status;
+		int cnt = 3, retry = 0;
+		do 
+		{
+			/* Try again */
+			status = send_remaining(asock, send_key);
+			if (status == PJ_SUCCESS) {
+				*size = whole;
+			} else {
+				pj_ssize_t tmp = asock->send_data.len - asock->send_data.sent;
+				*size = asock->send_data.sent;
+
+				retry += 1;
+				cnt -= 1;
+				PJ_LOG(3, ("", "======[%d] send_remaining size: %d failed, retry[%d]!!!", status, tmp, retry));
+				pj_thread_sleep(50);
+			}
+		} while (cnt && retry);
+
+		return status;
 
     } else {
 	return pj_ioqueue_send(asock->key, send_key, data, size, flags);

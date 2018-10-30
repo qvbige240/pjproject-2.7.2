@@ -191,7 +191,8 @@ else
 
   export LDFLAGS="${LDFLAGS} --sysroot=${ANDROID_SYSROOT}"
   export LIBS="${LIBS} -lc -lgcc"
-  export CFLAGS="${CFLAGS} --sysroot=${ANDROID_SYSROOT}"
+#  export CFLAGS="${CFLAGS} --sysroot=${ANDROID_SYSROOT}"
+  export CFLAGS="${CFLAGS} -DPJMEDIA_AUDIO_DEV_HAS_NULL_AUDIO --sysroot=${ANDROID_SYSROOT}"
   export CPPFLAGS="${CFLAGS} -fexceptions -frtti"
   export CXXFLAGS="${CXXFLAGS} -shared --sysroot=${ANDROID_SYSROOT} -fexceptions -frtti"
 

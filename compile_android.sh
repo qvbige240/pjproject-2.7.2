@@ -67,35 +67,39 @@ if true;then
         #cd ${BUILD_PATH}
         #rm -rf *
         cd ${pjsip_SRC}   # compile directly
+        if [ -f ${pjsip_SRC}/build.mak ]; then
+            make clean
+        fi
+        sed -i "/^#define PJ_CONFIG_ANDROID.*/s/_[A-Z].*/_CONFIG_ANDROID 1/" ${pjsip_SRC}/pjlib/include/pj/config_site.h
         ${pjsip_SRC}/configure-android --prefix=${FINAL_PATH} 
-    #	    CFLAGS="-g -DPJMEDIA_AUDIO_DEV_HAS_NULL_AUDIO"
+#    	    CFLAGS="-g -DPJMEDIA_AUDIO_DEV_HAS_NULL_AUDIO"
         make dep
         make clean
         make
         make install
-}
+    }
 else
-function build_pjsip()
-{
-    echo "#####################    Build pjsip   #####################"
-    echo "   "
-    #cd ${BUILD_PATH}
-    #rm -rf *
-    cd ${pjsip_SRC}   # compile directly
-    if [ -f ${pjsip_SRC}/build.mak ]; then
+    function build_pjsip()
+    {
+        echo "#####################    Build pjsip   #####################"
+        echo "   "
+        #cd ${BUILD_PATH}
+        #rm -rf *
+        cd ${pjsip_SRC}   # compile directly
+        if [ -f ${pjsip_SRC}/build.mak ]; then
+            make clean
+        fi
+        sed -i "/^#define PJ_CONFIG_ANDROID.*/s/_[A-Z].*/_CONFIG_ANDROID 1/" ${pjsip_SRC}/pjlib/include/pj/config_site.h
+        ${pjsip_SRC}/aconfigure --prefix=${FINAL_PATH} --host=${TARGETMACH} \
+	        CFLAGS="-g -O0 -DPJMEDIA_AUDIO_DEV_HAS_NULL_AUDIO ${ANDROID_INCLUDES} ${ANDROID_CFLAGS}" \
+	        CPPFLAGS="${ANDROID_INCLUDES} ${ANDROID_CFLAGS} -fexceptions -frtti" \
+	        CPPFLAGS="${ANDROID_INCLUDES} -shared ${ANDROID_CFLAGS} -fexceptions -frtti" \
+	        LDFLAGS="${ANDROID_CFLAGS} "
+        make dep
         make clean
-    fi
-    sed -i "/^#define PJ_CONFIG_ANDROID.*/s/_[A-Z].*/_CONFIG_ANDROID 1/" ${pjsip_SRC}/pjlib/include/pj/config_site.h
-    ${pjsip_SRC}/aconfigure --prefix=${FINAL_PATH} --host=${TARGETMACH} \
-	    CFLAGS="-g -O0 -DPJMEDIA_AUDIO_DEV_HAS_NULL_AUDIO ${ANDROID_INCLUDES} ${ANDROID_CFLAGS}" \
-	    CPPFLAGS="${ANDROID_INCLUDES} ${ANDROID_CFLAGS} -fexceptions -frtti" \
-	    CPPFLAGS="${ANDROID_INCLUDES} -shared ${ANDROID_CFLAGS} -fexceptions -frtti" \
-	    LDFLAGS="${ANDROID_CFLAGS} "
-    make dep
-    make clean
-    make
-    make install
-}
+        make
+        make install
+    }
 fi
 
 

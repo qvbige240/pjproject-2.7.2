@@ -696,7 +696,7 @@ static pj_status_t turn_on_send_pkt(pj_turn_session *sess,
     }
 
 	/* return sended buffer size */
-	status = len;
+	//status = len;
 
 	return status;
 }

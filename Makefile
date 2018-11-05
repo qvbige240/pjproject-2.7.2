@@ -118,8 +118,8 @@ pjsua-test:
 
 install:
 	mkdir -p $(DESTDIR)$(libdir)/
-#	cp -af $(APP_LIB_FILES) $(DESTDIR)$(libdir)/
-	cp -af $(APP_LIBXX_FILES) $(DESTDIR)$(libdir)/
+	cp -af $(APP_LIB_FILES) $(DESTDIR)$(libdir)/
+#	cp -af $(APP_LIBXX_FILES) $(DESTDIR)$(libdir)/
 	mkdir -p $(DESTDIR)$(includedir)/
 	for d in pjlib pjlib-util pjnath pjmedia pjsip; do \
 		cp -RLf $$d/include/* $(DESTDIR)$(includedir)/; \

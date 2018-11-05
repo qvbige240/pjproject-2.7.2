@@ -58,7 +58,7 @@ fi
 
 if true;then
     export ANDROID_NDK_ROOT=${NDK_HOME}
-    export APP_PLATFORM=android-19
+    export APP_PLATFORM=android-9
     export TARGET_ABI=armeabi
     function build_pjsip()
     {

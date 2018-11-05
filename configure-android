@@ -206,19 +206,19 @@ fi
 # C++ STL
 # Note: STL for pjsua2 sample app is specified in pjsip-apps/src/swig/java/android/jni/Application.mk
 
-if test "x${NDK_TOOLCHAIN}" = "x"; then
-  # gnustl
-  STDCPP_TC_VER=`ls -d ${ANDROID_NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/[0-9]* | sort -gr | head -1`
-  STDCPP_CFLAGS="-I${STDCPP_TC_VER}/include -I${STDCPP_TC_VER}/libs/${TARGET_ABI}/include"
-  STDCPP_LIBS="-lgnustl_static"
-  STDCPP_LDFLAGS="-L${STDCPP_TC_VER}/libs/${TARGET_ABI}/"
-else
-  # llvm
-  STDCPP_TC="${ANDROID_NDK_ROOT}/sources/cxx-stl/llvm-libc++"
-  STDCPP_CFLAGS="-I${STDCPP_TC}/include"
-  STDCPP_LIBS="-lc++_static -lc++abi"
-  STDCPP_LDFLAGS="-L${STDCPP_TC}/libs/${TARGET_ABI}/"
-fi
+#if test "x${NDK_TOOLCHAIN}" = "x"; then
+#  # gnustl
+#  STDCPP_TC_VER=`ls -d ${ANDROID_NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/[0-9]* | sort -gr | head -1`
+#  STDCPP_CFLAGS="-I${STDCPP_TC_VER}/include -I${STDCPP_TC_VER}/libs/${TARGET_ABI}/include"
+#  STDCPP_LIBS="-lgnustl_static"
+#  STDCPP_LDFLAGS="-L${STDCPP_TC_VER}/libs/${TARGET_ABI}/"
+#else
+#  # llvm
+#  STDCPP_TC="${ANDROID_NDK_ROOT}/sources/cxx-stl/llvm-libc++"
+#  STDCPP_CFLAGS="-I${STDCPP_TC}/include"
+#  STDCPP_LIBS="-lc++_static -lc++abi"
+#  STDCPP_LDFLAGS="-L${STDCPP_TC}/libs/${TARGET_ABI}/"
+#fi
 
 # stlport
 #STDCPP_CFLAGS="-I${ANDROID_NDK_ROOT}/sources/cxx-stl/stlport/stlport"

@@ -294,7 +294,7 @@ char* pj_strdup0(pj_pool_t *pool, char **dst, const char *src)
 	return *dst;
 }
 
-static pj_status_t set_args(ice_info_t *info)
+static pj_status_t set_args(ice_info_t *param)
 {
 	int i;
 	pjsua_app_config *cfg = &app_config;
@@ -303,7 +303,9 @@ static pj_status_t set_args(ice_info_t *info)
 	cfg->acc_cnt = 0;
 	cur_acc = cfg->acc_cfg;
 
-	PJ_ASSERT_RETURN(info, PJ_EINVAL);
+	PJ_ASSERT_RETURN(param, PJ_EINVAL);
+	ice_info_t *info = pj_pool_alloc(app_config.pool, sizeof(ice_info_t));
+	pj_memcpy(info, param, sizeof(ice_info_t));
 
 	char *id, *turn, *url;
 	char id_tmp[128] = {0}, turn_tmp[64] = {0}, url_tmp[32] = {0};
@@ -618,6 +620,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 	pj_pool_t *tmp_pool;
 	pj_status_t status;
 
+	//PJ_LOG(1,(THIS_FILE, "pjsua_create"));
 	/** Create pjsua **/
 	status = pjsua_create();
 	if (status != PJ_SUCCESS)
@@ -906,4 +909,29 @@ pj_status_t ice_client_destroy(void)
 void ice_client_status(void)
 {
 	keystroke_help();
+}
+
+pj_status_t ice_thread_register(const char *thread_name)
+{
+	pj_thread_t *thread;
+	pj_thread_desc *desc;
+	pj_status_t status;
+
+	desc = (pj_thread_desc*)malloc(sizeof(pj_thread_desc));
+	if (!desc) {
+		//PJSUA2_RAISE_ERROR(PJ_ENOMEM);
+		PJ_LOG(3, (THIS_FILE, "ice_thread_register null pointer error."));
+		//PJ_PERROR(4, (THIS_FILE, result, "ice_thread_register"));
+	}
+
+	pj_bzero(desc, sizeof(pj_thread_desc));
+
+	status = pj_thread_register(thread_name, *desc, &thread);
+	if (status == PJ_SUCCESS) {
+		//threadDescMap[thread] = desc;
+	} else {
+		free(desc);
+		PJ_PERROR(4, (THIS_FILE, status, "ice_thread_register"));
+		//PJSUA2_RAISE_ERROR(status);
+	}
 }

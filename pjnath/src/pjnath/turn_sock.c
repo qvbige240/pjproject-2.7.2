@@ -83,6 +83,9 @@ static void turn_on_state(pj_turn_session *sess,
 			  pj_turn_state_t old_state,
 			  pj_turn_state_t new_state);
 
+static pj_bool_t on_data_sent(pj_activesock_t *asock,
+							  pj_ioqueue_op_key_t *send_key,
+							  pj_ssize_t sent);
 static pj_bool_t on_data_read(pj_activesock_t *asock,
 			      void *data,
 			      pj_size_t size,
@@ -519,7 +522,7 @@ static pj_bool_t on_connect_complete(pj_activesock_t *asock,
     }
 
     if (turn_sock->conn_type != PJ_TURN_TP_UDP) {
-	PJ_LOG(5,(turn_sock->obj_name, "TCP connected"));
+		PJ_LOG(4,(turn_sock->obj_name, "TCP connected[TURN]"));
     }
 
     /* Kick start pending read operation */
@@ -661,6 +664,42 @@ on_return:
     return ret;
 }
 
+/* Callback from active socket about send status */
+static pj_bool_t on_data_sent(pj_activesock_t *asock,
+							  pj_ioqueue_op_key_t *send_key,
+							  pj_ssize_t sent)
+{
+	pj_turn_sock *turn_sock;
+
+	turn_sock = (pj_turn_sock*) pj_activesock_get_user_data(asock);
+
+	if (turn_sock == NULL || turn_sock->is_destroying) {
+		/* We've been destroyed */
+		// https://trac.pjsip.org/repos/ticket/1316
+		//pj_assert(!"We should shutdown gracefully");
+		return PJ_EINVALIDOP;
+	}
+
+	if (turn_sock->cb.on_data_sent) {
+		pj_bool_t ret;
+
+		pj_grp_lock_acquire(turn_sock->grp_lock);
+
+		/* If app gives NULL send_key in sendto() function, then give
+		* NULL in the callback too 
+		*/
+		if (send_key == &turn_sock->send_key)
+			send_key = NULL;
+
+		/* Call callback */
+		ret = (*turn_sock->cb.on_data_sent)(turn_sock, send_key, sent);
+
+		pj_grp_lock_release(turn_sock->grp_lock);
+		return ret;
+	}
+
+	return PJ_TRUE;
+}
 
 /*
  * Callback from TURN session to send outgoing packet.
@@ -671,10 +710,9 @@ static pj_status_t turn_on_send_pkt(pj_turn_session *sess,
 				    const pj_sockaddr_t *dst_addr,
 				    unsigned dst_addr_len)
 {
-    pj_turn_sock *turn_sock = (pj_turn_sock*) 
-			      pj_turn_session_get_user_data(sess);
-    pj_ssize_t len = pkt_len;
-    pj_status_t status;
+	pj_turn_sock *turn_sock = (pj_turn_sock*)pj_turn_session_get_user_data(sess);
+	pj_ssize_t len = pkt_len;
+	pj_status_t status;
 
     if (turn_sock == NULL || turn_sock->is_destroying) {
 	/* We've been destroyed */
@@ -683,17 +721,16 @@ static pj_status_t turn_on_send_pkt(pj_turn_session *sess,
 	return PJ_EINVALIDOP;
     }
 
-    if (turn_sock->conn_type == PJ_TURN_TP_UDP) {
-	status = pj_activesock_sendto(turn_sock->active_sock,
-				      &turn_sock->send_key, pkt, &len, 0,
-				      dst_addr, dst_addr_len);
-    } else {
-	status = pj_activesock_send(turn_sock->active_sock,
-				    &turn_sock->send_key, pkt, &len, 0);
-    }
-    if (status != PJ_SUCCESS && status != PJ_EPENDING) {
-	show_err(turn_sock, "socket send()", status);
-    }
+	if (turn_sock->conn_type == PJ_TURN_TP_UDP) {
+		status = pj_activesock_sendto(turn_sock->active_sock,
+			&turn_sock->send_key, pkt, &len, 0, dst_addr, dst_addr_len);
+	} else {
+		status = pj_activesock_send(turn_sock->active_sock,
+			&turn_sock->send_key, pkt, &len, 0);
+	}
+	if (status != PJ_SUCCESS && status != PJ_EPENDING) {
+		show_err(turn_sock, "socket send()", status);
+	}
 
 	/* return sended buffer size */
 	//status = len;
@@ -884,6 +921,7 @@ static void turn_on_state(pj_turn_session *sess,
 
 	pj_bzero(&asock_cb, sizeof(asock_cb));
 	asock_cb.on_data_read = &on_data_read;
+		asock_cb.on_data_sent = &on_data_sent;	// only tcp... ?
 	asock_cb.on_connect_complete = &on_connect_complete;
 	status = pj_activesock_create(turn_sock->pool, sock,
 				      sock_type, &asock_cfg,

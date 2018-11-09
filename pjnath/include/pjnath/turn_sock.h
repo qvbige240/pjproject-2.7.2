@@ -26,6 +26,7 @@
  */
 #include <pjnath/turn_session.h>
 #include <pj/sock_qos.h>
+#include <pj/ioqueue.h>
 
 
 PJ_BEGIN_DECL
@@ -85,6 +86,27 @@ typedef struct pj_turn_sock_cb
 		       unsigned pkt_len,
 		       const pj_sockaddr_t *peer_addr,
 		       unsigned addr_len);
+
+	/** qing.zou added **/
+    /**
+     * Notifification when asynchronous send operation has completed.
+     *
+     * @param stun_sock	The STUN transport.
+     * @param send_key	The send operation key that was given in
+     *			#pj_stun_sock_sendto().
+     * @param sent	If value is positive non-zero it indicates the
+     *			number of data sent. When the value is negative,
+     *			it contains the error code which can be retrieved
+     *			by negating the value (i.e. status=-sent).
+     *
+     * @return		Application should normally return PJ_TRUE to let
+     *			the STUN transport continue its operation. However
+     *			it must return PJ_FALSE if it has destroyed the
+     *			STUN transport in this callback.
+     */
+	pj_bool_t (*on_data_sent)(pj_turn_sock *turn_sock, 
+				pj_ioqueue_op_key_t *send_key,
+				pj_ssize_t sent);
 
     /**
      * Notification when TURN session state has changed. Application should

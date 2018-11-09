@@ -393,7 +393,7 @@ static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read)
 	//printf("pkt[%d] %d + %d = %d \n", index_read, total_read, bytes_read, total_read+bytes_read);
 	//index_read++;
 	total_read += bytes_read;
-	rate = total_read * 1.0 / (result.tv_sec * 1000 + result.tv_usec / 1.0e3);
+	rate = total_read * 1.0 / (result.tv_sec * 1000 + result.tv_usec / 1.0e3 + 1);
 
 	//stotal = total_read;
 	//if (stotal / 10000 > 1) {
@@ -404,7 +404,7 @@ static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read)
 	//		stotal = stotal / 1000;
 	//	}
 	//}
-	PJ_LOG(4,("", "pkt[%d] %d + %d = %d   %.1fKB/s  %.1f", index_read++, total_read, bytes_read, total_read, rate, elapsed));
+	PJ_LOG(4,("", "pkt[%d] %d + %d = %d   %.1fKB/s  %.1fs", index_read++, total_read-bytes_read, bytes_read, total_read, rate, elapsed));
 	//printf("pkt[%d] %d + %d = %d   %.1fKB/s  %.1f\n", index_read++, total_read, bytes_read, total_read, rate, elapsed);
 	vpk_file_save("./recv.txt", pkt, bytes_read);
 }

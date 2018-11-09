@@ -114,6 +114,9 @@ static pj_bool_t stun_tcp_rx_data(pj_stun_sock *stun_sock,
 static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
 									pj_stun_sock_op op,
 									pj_status_t status);
+static pj_bool_t stun_tcp_on_data_sent(pj_stun_sock *tcp_sock,
+									   pj_ioqueue_op_key_t *send_key,
+									   pj_ssize_t sent);
 /* Notification when incoming packet has been received. */
 static pj_bool_t stun_on_rx_data(pj_stun_sock *stun_sock,
 				 void *pkt,
@@ -122,9 +125,6 @@ static pj_bool_t stun_on_rx_data(pj_stun_sock *stun_sock,
 				 unsigned addr_len);
 /* Notifification when asynchronous send operation has completed. */
 static pj_bool_t stun_on_data_sent(pj_stun_sock *stun_sock,
-				   pj_ioqueue_op_key_t *send_key,
-				   pj_ssize_t sent);
-static pj_bool_t stun_tcp_on_data_sent(pj_stun_sock *tcp_sock,
 									   pj_ioqueue_op_key_t *send_key,
 									   pj_ssize_t sent);
 /* Notification when the status of the STUN transport has changed. */
@@ -141,6 +141,9 @@ static void turn_on_rx_data(pj_turn_sock *turn_sock,
 			    unsigned addr_len);
 static void turn_on_state(pj_turn_sock *turn_sock, pj_turn_state_t old_state,
 			  pj_turn_state_t new_state);
+static pj_bool_t tun_on_data_sent(pj_turn_sock *turn_sock,
+								  pj_ioqueue_op_key_t *send_key,
+								  pj_ssize_t sent);
 
 
 
@@ -383,6 +386,7 @@ static pj_status_t add_update_turn(pj_ice_strans *ice_st,
     pj_bzero(&turn_sock_cb, sizeof(turn_sock_cb));
     turn_sock_cb.on_rx_data = &turn_on_rx_data;
     turn_sock_cb.on_state = &turn_on_state;
+	turn_sock_cb.on_data_sent = &tun_on_data_sent;	// qing.zou
 
     /* Override with component specific QoS settings, if any */
     if (ice_st->cfg.comp[comp_idx].qos_type)
@@ -2456,3 +2460,27 @@ static void turn_on_state(pj_turn_sock *turn_sock, pj_turn_state_t old_state,
     pj_log_pop_indent();
 }
 
+static pj_bool_t tun_on_data_sent(pj_turn_sock *turn_sock,
+									   pj_ioqueue_op_key_t *send_key,
+									   pj_ssize_t sent)
+{
+	PJ_UNUSED_ARG(send_key);
+	PJ_UNUSED_ARG(sent);
+	sock_user_data *data;
+	pj_ice_strans_comp *comp;
+	pj_ice_strans *ice_st;
+
+	data = (sock_user_data*) pj_turn_sock_get_user_data(turn_sock);
+	comp = data->comp;
+	ice_st = comp->ice_st;
+	pj_ice_strans_cb cb = ice_st->cb;
+
+	pj_grp_lock_add_ref(ice_st->grp_lock);
+
+	if (cb.on_data_writable)
+		cb.on_data_writable(ice_st, comp->comp_id);
+
+	pj_grp_lock_dec_ref(ice_st->grp_lock);
+
+	return PJ_TRUE;
+}

@@ -1801,6 +1801,8 @@ static pj_status_t ice_tx_pkt(pj_ice_sess *ice,
 	} else {
 	    status = PJ_EINVALIDOP;
 	}
+		// qing.zou...
+		return status;
     } else if (tp_typ == TP_STUN) {
     	const pj_sockaddr_t *dest_addr;
     	unsigned dest_addr_len;

@@ -74,6 +74,14 @@ typedef struct pjmedia_ice_cb
 			        pj_status_t status,
 				void *user_data);
 
+	/** qing.zou added **/
+	/**
+     * This callback will be called when ICE fd is writable.
+     *
+     * @param tp	PJMEDIA ICE transport.
+     * @param data	The data
+     */
+    void    (*on_data_writable)(pjmedia_transport *tp, void* data);
 
 	int (*start_tcp_punch)(char* remote_ip, pj_uint16_t remote_port, pj_uint16_t base_port);
 	int (*get_hole_addr)(void *ctx, void *data);

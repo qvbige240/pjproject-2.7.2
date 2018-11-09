@@ -5,6 +5,7 @@
 #include "media_dev_impl.h"
 
 static void on_connect_success(void *ctx, void *param);
+static void on_socket_writable(void *ctx, void *param);
 static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read);
 
 
@@ -24,6 +25,7 @@ typedef struct stream_transport
 	pj_mutex_t		*mutex;
 
 	pj_bool_t		start;
+	pj_bool_t		eagain;
 	pj_bool_t		is_quitting;
 	pj_thread_t		*stream_thread;
 
@@ -108,6 +110,14 @@ static int stream_transport_start(stream_transport_t *stream)
 	return 0;
 }
 
+static int stream_transport_status(stream_transport_t *stream, int eagain)
+{
+	if (stream)
+		stream->eagain = eagain;
+
+	return 0;
+}
+
 static int stream_write_process(void* handler, send_func process, void *data)
 {
 	int ret = 0;
@@ -139,12 +149,13 @@ static int stream_write_process(void* handler, send_func process, void *data)
 			ret = process(pkt_node->buffer, pkt_node->buffer_size);	/* send active */
 resendpkt:
 		if (ret != 0) {
-			printf("\n=====[%d]send_cnt: %d, status: %d\n", pkt_node->seq_num, thiz->send_cnt, ret);
-			//usleep(600000);
-			sleep(2);
-			ret = process(pkt_node->buffer, pkt_node->buffer_size);	/* send active */
-			if (ret != 0)
-				goto resendpkt;
+			PJ_LOG(4,("", "=====[%d]send_cnt: %d, status: %d\n", pkt_node->seq_num, thiz->send_cnt, ret));
+			//sleep(2);
+			stream_transport_status(thiz, 1);
+			usleep(100000);
+			//ret = process(pkt_node->buffer, pkt_node->buffer_size);	/* send active */
+			//if (ret != 0)
+			//	goto resendpkt;
 		}
 
 		//printf("=====send_cnt: %d, status: %d\n", thiz->send_cnt, ret);
@@ -166,13 +177,13 @@ static int write_thread(void *args)
 	while(!stream->is_quitting) {
 		pj_status_t status;
 
-		if (stream->start)
+		if (stream->start && !stream->eagain)
 			stream_write_process(stream, ice_packet_send, NULL);
 
 		if (stream->is_quitting)
 			break;
 
-		pj_thread_sleep(2);
+		pj_thread_sleep(1);
 	}
 
 	return 0;
@@ -246,6 +257,7 @@ vpk_stream_t* vpk_stream_create(pj_pool_t *pool)
 
 	//iclient_callback op = {0};
 	thiz->op.on_connect_success = on_connect_success;
+	thiz->op.on_socket_writable = on_socket_writable;
 	thiz->op.on_receive_message = on_receive_message;
 
 	status = stream_transport_init(pool, &thiz->send);
@@ -329,14 +341,70 @@ static void on_connect_success(void *ctx, void *param)
 	stream_transport_start(thiz->send);
 }
 
+static void on_socket_writable(void *ctx, void *param)
+{
+	vpk_stream_t *thiz = (vpk_stream_t *)ctx;
+
+	pj_assert(ctx);
+
+	/* start send */
+	stream_transport_status(thiz->send, 0);
+}
+
+#include <time.h>
+
+static struct timeval prev;	
+
 static int total_read = 0;
 static int index_read = 0;
 extern int vpk_file_save(const char* filename, void* data, size_t size);
 
+static int time_sub(struct timeval *result, struct timeval *prev, struct timeval *next)
+{
+	if (prev->tv_sec > next->tv_sec) return -1;
+	if (prev->tv_sec == next->tv_sec && prev->tv_usec > next->tv_usec) return -1;
+
+	result->tv_sec = next->tv_sec - prev->tv_sec;
+	result->tv_usec = next->tv_usec - prev->tv_usec;
+	if (result->tv_usec < 0)
+	{
+		result->tv_sec--;
+		result->tv_usec += 1000000;
+	}
+
+	return 0;
+}
 static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read)
 {
-	printf("pkt[%d] %d + %d = %d \n", index_read, total_read, bytes_read, total_read+bytes_read);
-	index_read++;
+	int stotal, unit;
+	double rate;
+	double elapsed;
+	struct timeval result, next;	
+
+	if (index_read == 0)
+		gettimeofday(&prev, 0);
+
+	gettimeofday(&next, 0);
+	//vpk_timersub(&next, &prev, &result);
+	time_sub(&result, &prev, &next);
+	elapsed = result.tv_sec + (result.tv_usec / 1.0e6);
+	//LOG_D("vpk time elapsed: %.6f, %d(s) %d(us) \n", elapsed, result.tv_sec, result.tv_usec);
+
+	//printf("pkt[%d] %d + %d = %d \n", index_read, total_read, bytes_read, total_read+bytes_read);
+	//index_read++;
 	total_read += bytes_read;
+	rate = total_read * 1.0 / (result.tv_sec * 1000 + result.tv_usec / 1.0e3);
+
+	//stotal = total_read;
+	//if (stotal / 10000 > 1) {
+	//	unit++;
+	//	stotal = stotal / 1000;
+	//	if (stotal / 10000 > 1) {
+	//		unit++;
+	//		stotal = stotal / 1000;
+	//	}
+	//}
+	PJ_LOG(4,("", "pkt[%d] %d + %d = %d   %.1fKB/s  %.1f", index_read++, total_read, bytes_read, total_read, rate, elapsed));
+	//printf("pkt[%d] %d + %d = %d   %.1fKB/s  %.1f\n", index_read++, total_read, bytes_read, total_read, rate, elapsed);
 	vpk_file_save("./recv.txt", pkt, bytes_read);
 }

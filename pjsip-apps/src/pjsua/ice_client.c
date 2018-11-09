@@ -571,6 +571,24 @@ static void on_ice_connection_success(void *tp, void *param)
 }
 
 /*
+ * ice connect successfully callback.
+ */
+static void on_ice_socket_writable(void *tp, void *param)
+{
+	socket_client *client = (socket_client *)app_config.client;
+
+	PJ_LOG(4, (THIS_FILE, "========ice socket writable."));
+	if (tp && client) {
+		if (client->cb.on_socket_writable)
+			client->cb.on_socket_writable(client->ctx, NULL);
+		else
+			PJ_LOG(3, (THIS_FILE, "without register callback function: on_socket_writable."));
+	} else {
+		PJ_LOG(3, (THIS_FILE, "null pointer error."));
+	}
+}
+
+/*
  * ice receive message callback.
  */
 static void on_ice_receive_message(void *data, void *pkt, pj_ssize_t bytes_read)
@@ -677,6 +695,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 
 	app_config.cfg.cb.on_ice_negotiation_success = &on_ice_negotiation_success;
 	app_config.cfg.cb.on_ice_connection_success = &on_ice_connection_success;
+	app_config.cfg.cb.on_ice_socket_writable = &on_ice_socket_writable;
 	app_config.cfg.cb.on_ice_receive_message = &on_ice_receive_message;
 
 
@@ -853,6 +872,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 
 	client->ctx = ctx;
 	client->cb.on_connect_success = ctx->on_connect_success;
+	client->cb.on_socket_writable = ctx->on_socket_writable;
 	client->cb.on_receive_message = ctx->on_receive_message;
 
 	status = pjsua_start();

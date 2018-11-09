@@ -671,6 +671,7 @@ static pj_status_t send_remaining(pj_activesock_t *asock,
     return status;
 }
 
+static int test_flag = 0;
 
 PJ_DEF(pj_status_t) pj_activesock_send( pj_activesock_t *asock,
 					pj_ioqueue_op_key_t *send_key,
@@ -690,6 +691,10 @@ PJ_DEF(pj_status_t) pj_activesock_send( pj_activesock_t *asock,
 	pj_status_t status;
 
 	whole = *size;
+		if (test_flag == 1) {
+			PJ_LOG(3, ("", "====== start pj_ioqueue_send size: %d !!!", whole));
+			test_flag = 0;
+		}
 
 	status = pj_ioqueue_send(asock->key, send_key, data, size, flags);
 	if (status != PJ_SUCCESS) {
@@ -709,25 +714,14 @@ PJ_DEF(pj_status_t) pj_activesock_send( pj_activesock_t *asock,
 	asock->send_data.flags = flags;
 	send_key->activesock_data = &asock->send_data;
 
-		int cnt = 3, retry = 0;
-		do 
-		{
-			/* Try again */
-			status = send_remaining(asock, send_key);
-			if (status == PJ_SUCCESS) {
-				*size = whole;
-			} else {
-				pj_ssize_t tmp = asock->send_data.len - asock->send_data.sent;
-				*size = asock->send_data.sent;
-
-				retry += 1;
-				cnt -= 1;
-				PJ_LOG(3, ("", "======[%d] send_remaining size: %d failed, retry[%d]!!!", status, tmp, retry));
-				pj_thread_sleep(50);
-			}
-		} while (cnt && retry);
-
-		return status;
+		test_flag = 1;
+		PJ_LOG(3, ("", "======[%d] need send_remaining size: %d !!!", status, whole-*size));
+	/* Try again */
+	status = send_remaining(asock, send_key);
+	if (status == PJ_SUCCESS) {
+	    *size = whole;
+	}
+	return status;
 
     } else {
 	return pj_ioqueue_send(asock->key, send_key, data, size, flags);
@@ -769,6 +763,7 @@ static void ioqueue_on_write_complete(pj_ioqueue_key_t *key,
     if (asock->shutdown & SHUT_TX)
 	return;
 
+	PJ_LOG(3, ("", "======bytes_sent: %d ioqueue_on_write_complete!!!", bytes_sent));
     if (bytes_sent > 0 && op_key->activesock_data) {
 	/* whole_data is requested. Make sure we send all the data */
 	struct send_data *sd = (struct send_data*)op_key->activesock_data;
@@ -782,6 +777,7 @@ static void ioqueue_on_write_complete(pj_ioqueue_key_t *key,
 	    /* send remaining data */
 	    pj_status_t status;
 
+			PJ_LOG(3, ("", "====== send_remaining size: %d, %d ioqueue_on_write_complete!!!", sd->sent, bytes_sent));
 	    status = send_remaining(asock, op_key);
 	    if (status == PJ_EPENDING)
 		return;

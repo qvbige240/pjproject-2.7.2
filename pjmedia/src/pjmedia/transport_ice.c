@@ -157,6 +157,7 @@ static void ice_on_rx_data(pj_ice_strans *ice_st,
 static void ice_on_ice_complete(pj_ice_strans *ice_st, 
 				pj_ice_strans_op op,
 			        pj_status_t status);
+static void ice_on_data_writable(pj_ice_strans *ice_st, unsigned comp_id);
 
 /*
  * Clean up ICE resources.
@@ -274,6 +275,7 @@ PJ_DEF(pj_status_t) pjmedia_ice_create3(pjmedia_endpt *endpt,
     /* Configure ICE callbacks */
     pj_bzero(&ice_st_cb, sizeof(ice_st_cb));
     ice_st_cb.on_ice_complete = &ice_on_ice_complete;
+	ice_st_cb.on_data_writable = &ice_on_data_writable;
     ice_st_cb.on_rx_data = &ice_on_rx_data;
 
     /* Configure RTP socket buffer settings, if not set */
@@ -2202,6 +2204,22 @@ static void ice_on_ice_complete(pj_ice_strans *ice_st,
 	    (*il->cb.on_ice_complete)(&tp_ice->base, op, result);
 	}
     }
+}
+
+static void ice_on_data_writable(pj_ice_strans *ice_st, unsigned comp_id)
+{
+	struct transport_ice *tp_ice;
+	ice_listener *il;
+
+	tp_ice = (struct transport_ice*) pj_ice_strans_get_user_data(ice_st);
+	if (!tp_ice) {
+		/* Destroy on progress */
+		return;
+	}
+
+	/* Notify application */
+	if (tp_ice->cb.on_data_writable)
+		(*tp_ice->cb.on_data_writable)(&tp_ice->base, NULL);
 }
 
 

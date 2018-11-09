@@ -1441,10 +1441,11 @@ typedef struct pjsua_callback
     void (*on_ice_transport_error)(int index, pj_ice_strans_op op,
 				   pj_status_t status, void *param);
 
-	// qing.zou
 	void (*on_ice_negotiation_success)(void *ctx, void *param);
 
 	void (*on_ice_connection_success)(void *ctx, void *param);
+
+	void (*on_ice_socket_writable)(void *ctx, void *param);
 
 	void (*on_ice_receive_message)(void *data, void *pkt, pj_ssize_t bytes_read);
 

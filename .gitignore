@@ -12,3 +12,6 @@ pjlib/include/pj/compat/os_auto.h
 pjmedia/include/pjmedia-codec/config_auto.h
 pjmedia/include/pjmedia/config_auto.h
 pjsip/include/pjsip/sip_autoconf.h
+
+tpc*
+*.mp4

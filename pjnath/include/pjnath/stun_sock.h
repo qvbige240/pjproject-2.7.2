@@ -90,6 +90,8 @@ typedef enum pj_stun_sock_op
 	 PJ_STUN_SOCK_MAPPED_ADDR_CHANGE,
 
 	 PJ_STUN_SOCK_TCP_CONN_COMPLETE,
+	 PJ_STUN_SOCK_TCP_WRITABLE,
+	 PJ_STUN_SOCK_TCP_DISCONNECT,
 
 
 } pj_stun_sock_op;

@@ -1498,6 +1498,20 @@ static int punch_hole_addr(void *ctx, void *data)
 	return 0;
 }
 
+/* This callback is called when ICE socket writable */
+static void on_data_writable(pjmedia_transport *tp, void* data)
+{
+	pjsua_call_media *call_med = (pjsua_call_media*)tp->user_data;
+	pjsua_call *call;
+
+	if (!call_med)
+		return;
+
+	call = call_med->call;
+
+	if (call && pjsua_var.ua_cfg.cb.on_ice_socket_writable)
+		(*pjsua_var.ua_cfg.cb.on_ice_socket_writable)(call_med->tp, NULL);
+}
 
 /* This callback is called when ICE negotiation completes */
 static void on_ice_complete(pjmedia_transport *tp, 
@@ -1897,8 +1911,9 @@ static pj_status_t create_ice_media_transport(
 	}
     }
 
-    pj_bzero(&ice_cb, sizeof(pjmedia_ice_cb));
-    ice_cb.on_ice_complete = &on_ice_complete;
+	pj_bzero(&ice_cb, sizeof(pjmedia_ice_cb));
+	ice_cb.on_ice_complete = &on_ice_complete;
+	ice_cb.on_data_writable = &on_data_writable;
 	//ice_cb.start_tcp_punch = start_punch;	//...
 	//ice_cb.start_tcp_punch = punch_hole;	//...
 	ice_cb.get_hole_addr = punch_hole_addr;

@@ -269,6 +269,7 @@ static pj_bool_t on_accept_complete(pj_activesock_t *asock,
 	pj_bzero(&asock_cb, sizeof(asock_cb));
 	asock_cb.on_data_read = &on_data_read;
 	//asock_cb.on_data_sent = &telnet_sess_on_data_sent;
+	asock_cb.on_data_sent = &on_data_sent;
 	status = pj_activesock_create(pool, newsock, 
 		pj_SOCK_STREAM(), NULL, stcp_sock->stun_cfg.ioqueue,	//...
 		&asock_cb, stcp_sock, &stcp_sock->asock);
@@ -689,7 +690,7 @@ PJ_DEF(pj_status_t) pj_stun_tcp_sock_create( pj_stun_config *stun_cfg,
 		/* Create the active socket */
 		pj_bzero(&activesock_cb, sizeof(activesock_cb));
 		//activesock_cb.on_data_recvfrom = &on_data_recvfrom;
-		//activesock_cb.on_data_sent = &on_data_sent;
+		activesock_cb.on_data_sent = &on_data_sent;
 		activesock_cb.on_data_read = &on_data_read;
 		activesock_cb.on_connect_complete = &on_connect_complete;
 		status = pj_activesock_create(pool, stcp_sock->sock_fd, 

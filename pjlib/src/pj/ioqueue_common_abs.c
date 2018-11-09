@@ -899,7 +899,9 @@ PJ_DEF(pj_status_t) pj_ioqueue_send( pj_ioqueue_key_t *key,
             /* If error is not EWOULDBLOCK (or EAGAIN on Linux), report
              * the error to caller.
              */
+			PJ_LOG(3, ("", "======11[%d] pj_ioqueue_send size: %d!!!", status, sent));
             if (status != PJ_STATUS_FROM_OS(PJ_BLOCKING_ERROR_VAL)) {
+				PJ_LOG(3, ("", "======22[%d] pj_ioqueue_send size: %d!!!", status, sent));
                 return status;
             }
         }
@@ -934,6 +936,7 @@ PJ_DEF(pj_status_t) pj_ioqueue_send( pj_ioqueue_key_t *key,
 	 * situation like this.
 	 */
 	//pj_assert(!"ioqueue: there is pending operation on this key!");
+		PJ_LOG(3, ("", "======44[%d] pj_ioqueue_send size: %d!!!", PJ_EBUSY, sent));
 	return PJ_EBUSY;
     }
 
@@ -956,6 +959,7 @@ PJ_DEF(pj_status_t) pj_ioqueue_send( pj_ioqueue_key_t *key,
     ioqueue_add_to_set(key->ioqueue, key, WRITEABLE_EVENT);
     pj_ioqueue_unlock_key(key);
 
+	PJ_LOG(3, ("", "======33[%d] pj_ioqueue_send size: %d!!!", PJ_EPENDING, sent));
     return PJ_EPENDING;
 }
 

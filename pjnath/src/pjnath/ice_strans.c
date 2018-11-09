@@ -124,6 +124,9 @@ static pj_bool_t stun_on_rx_data(pj_stun_sock *stun_sock,
 static pj_bool_t stun_on_data_sent(pj_stun_sock *stun_sock,
 				   pj_ioqueue_op_key_t *send_key,
 				   pj_ssize_t sent);
+static pj_bool_t stun_tcp_on_data_sent(pj_stun_sock *tcp_sock,
+									   pj_ioqueue_op_key_t *send_key,
+									   pj_ssize_t sent);
 /* Notification when the status of the STUN transport has changed. */
 static pj_bool_t stun_on_status(pj_stun_sock *stun_sock,
 				pj_stun_sock_op op,
@@ -485,7 +488,8 @@ pj_status_t ice_stun_tcp(pj_ice_strans *ice_st, pj_uint16_t lport, pj_sockaddr_t
 	pj_bzero(&stun_sock_cb, sizeof(stun_sock_cb));
 	stun_sock_cb.on_rx_data = &stun_tcp_rx_data;
 	stun_sock_cb.on_status = &stun_tcp_on_status;
-	stun_sock_cb.on_data_sent = &stun_on_data_sent;
+	//stun_sock_cb.on_data_sent = &stun_on_data_sent;
+	stun_sock_cb.on_data_sent = &stun_tcp_on_data_sent;
 
 	/* Allocate and initialize STUN socket data */
 	data = PJ_POOL_ZALLOC_T(ice_st->pool, sock_user_data);
@@ -1938,10 +1942,35 @@ static pj_bool_t stun_on_data_sent(pj_stun_sock *stun_sock,
 				   pj_ioqueue_op_key_t *send_key,
 				   pj_ssize_t sent)
 {
-    PJ_UNUSED_ARG(stun_sock);
-    PJ_UNUSED_ARG(send_key);
-    PJ_UNUSED_ARG(sent);
-    return PJ_TRUE;
+	PJ_UNUSED_ARG(stun_sock);
+	PJ_UNUSED_ARG(send_key);
+	PJ_UNUSED_ARG(sent);
+	return PJ_TRUE;
+}
+
+static pj_bool_t stun_tcp_on_data_sent(pj_stun_sock *tcp_sock,
+								   pj_ioqueue_op_key_t *send_key,
+								   pj_ssize_t sent)
+{
+	PJ_UNUSED_ARG(send_key);
+	PJ_UNUSED_ARG(sent);
+	sock_user_data *data;
+	pj_ice_strans_comp *comp;
+	pj_ice_strans *ice_st;
+
+	data = (sock_user_data*) pj_stun_sock_get_user_data(tcp_sock);
+	comp = data->comp;
+	ice_st = comp->ice_st;
+	pj_ice_strans_cb cb = ice_st->cb;
+
+	pj_grp_lock_add_ref(ice_st->grp_lock);
+
+	if (cb.on_data_writable)
+		cb.on_data_writable(ice_st, comp->comp_id);
+
+	pj_grp_lock_dec_ref(ice_st->grp_lock);
+
+	return PJ_TRUE;
 }
 
 /* Notification when the status of the STUN transport has changed. */

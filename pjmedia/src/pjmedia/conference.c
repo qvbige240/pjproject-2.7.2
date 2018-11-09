@@ -2090,7 +2090,24 @@ static pj_status_t put_frame(pjmedia_port *this_port,
 	return PJ_SUCCESS;
     }
 
-    status = pjmedia_delay_buf_put(port->delay_buf, (pj_int16_t*)frame->buf);
+#if 0
+	int i, ci;
+	for (i=0, ci=0; i<conf->max_ports && ci<conf->port_cnt; ++i) {
+		struct conf_port *cport = conf->ports[i];
+
+		if (!cport)
+			continue;
+
+		/* Var "ci" is to count how many ports have been visited. */
+		++ci;
+
+		if (cport->port != NULL) {
+			status = pjmedia_port_put_frame(cport->port, frame);
+		}
+	}
+#else
+	status = pjmedia_delay_buf_put(port->delay_buf, (pj_int16_t*)frame->buf);
+#endif
 
     return status;
 }

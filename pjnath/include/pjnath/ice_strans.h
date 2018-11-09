@@ -174,6 +174,14 @@ typedef struct pj_ice_strans_cb
 			       pj_ice_strans_op op,
 			       pj_status_t status);
 
+	/** qing.zou added **/
+	/**
+     * Callback to report writable of various ICE fd.
+     * 
+     * @param ice_st	    The ICE stream transport.
+     * @param comp_id	    The component ID.
+     */
+	void    (*on_data_writable)(pj_ice_strans *ice_st, unsigned comp_id);
 } pj_ice_strans_cb;
 
 
@@ -840,6 +848,7 @@ PJ_DECL(pj_ice_sess_role) pj_ice_strans_get_role(pj_ice_strans *ice_st);
  */
 PJ_DECL(pj_status_t) pj_ice_strans_change_role(pj_ice_strans *ice_st,
 					       pj_ice_sess_role new_role);
+
 
 
 // add...

@@ -2753,11 +2753,14 @@ static void handle_incoming_check(pj_ice_sess *ice,
 	rcand->prio = rcheck->priority;
 	pj_sockaddr_cp(&rcand->addr, &rcheck->src_addr);
 
-	/* Foundation is random, unique from other foundation */
-	rcand->foundation.ptr = (char*) pj_pool_alloc(ice->pool, 36);
-	rcand->foundation.slen = pj_ansi_snprintf(rcand->foundation.ptr, 36,
-						  "f%p", 
-						  rcand->foundation.ptr);
+		rcand->is_relay = 1;
+		LOG4((ice->obj_name, "=============== is relay set ============== "));
+
+		/* Foundation is random, unique from other foundation */
+		rcand->foundation.ptr = (char*) pj_pool_alloc(ice->pool, 36);
+		rcand->foundation.slen = pj_ansi_snprintf(rcand->foundation.ptr, 36,
+			"f%p", 
+			rcand->foundation.ptr);
 
 	LOG4((ice->obj_name, 
 	      "Added new remote candidate from the request: %s:%d",

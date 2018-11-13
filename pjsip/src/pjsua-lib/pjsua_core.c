@@ -2114,6 +2114,7 @@ static pj_status_t create_sip_udp_sock(int af,
 	return status;
     }
 
+    printf("create udp sock = %d, port = %d\n", sock, port);
     /* Apply QoS, if specified */
     status = pj_sock_apply_qos2(sock, cfg->qos_type, 
 				&cfg->qos_params, 

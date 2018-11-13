@@ -936,7 +936,7 @@ PJ_DEF(pj_status_t) pj_ioqueue_send( pj_ioqueue_key_t *key,
 	 * situation like this.
 	 */
 	//pj_assert(!"ioqueue: there is pending operation on this key!");
-		PJ_LOG(3, ("", "======44[%d] pj_ioqueue_send size: %d!!!", PJ_EBUSY, sent));
+		PJ_LOG(3, ("", "======44[%d] pj_ioqueue_send!!!", PJ_EBUSY));
 	return PJ_EBUSY;
     }
 

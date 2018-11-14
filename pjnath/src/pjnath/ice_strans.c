@@ -961,25 +961,30 @@ static void destroy_ice_st(pj_ice_strans *ice_st)
 	ice_st->ice = NULL;
     }
 
-    /* Destroy all components */
-    for (i=0; i<ice_st->comp_cnt; ++i) {
-	if (ice_st->comp[i]) {
-	    pj_ice_strans_comp *comp = ice_st->comp[i];
-	    unsigned j;
-	    for (j = 0; j < ice_st->cfg.stun_tp_cnt; ++j) {
-		if (comp->stun[j].sock) {
-		    pj_stun_sock_destroy(comp->stun[j].sock);
-		    comp->stun[j].sock = NULL;
-		}
-	    }
-	    for (j = 0; j < ice_st->cfg.turn_tp_cnt; ++j) {
-		if (comp->turn[j].sock) {
-		    pj_turn_sock_destroy(comp->turn[j].sock);
-		    comp->turn[j].sock = NULL;
-		}
-	    }
+	if (ice_st->comp[0]->tcp.sock) {
+		pj_stun_sock_destroy(ice_st->comp[0]->tcp.sock);
+		ice_st->comp[0]->tcp.sock = NULL;
 	}
-    }
+
+	/* Destroy all components */
+	for (i=0; i<ice_st->comp_cnt; ++i) {
+		if (ice_st->comp[i]) {
+			pj_ice_strans_comp *comp = ice_st->comp[i];
+			unsigned j;
+			for (j = 0; j < ice_st->cfg.stun_tp_cnt; ++j) {
+				if (comp->stun[j].sock) {
+					pj_stun_sock_destroy(comp->stun[j].sock);
+					comp->stun[j].sock = NULL;
+				}
+			}
+			for (j = 0; j < ice_st->cfg.turn_tp_cnt; ++j) {
+				if (comp->turn[j].sock) {
+					pj_turn_sock_destroy(comp->turn[j].sock);
+					comp->turn[j].sock = NULL;
+				}
+			}
+		}
+	}
 
     pj_grp_lock_dec_ref(ice_st->grp_lock);
     pj_grp_lock_release(ice_st->grp_lock);

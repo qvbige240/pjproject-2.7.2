@@ -623,7 +623,7 @@ static void call_timeout_callback(pj_timer_heap_t *timer_heap, struct pj_timer_e
 	pj_list_push_back(&msg_data_.hdr_list, &warn);
 
 	/* Call duration has been exceeded; disconnect the call */
-	PJ_LOG(3,(THIS_FILE, "Duration (%d seconds) has been exceeded "
+	PJ_LOG(3,(THIS_FILE, "============Duration (%d seconds) has been exceeded "
 		"for call %d, disconnecting the call", app_config.duration, call_id));
 	entry->id = PJSUA_INVALID_ID;
 	pjsua_call_hangup(call_id, 200, NULL, &msg_data_);
@@ -909,6 +909,12 @@ pj_status_t ice_packet_send(const void *pkt, pj_size_t size)
 		status = pjmedia_transport_send_rtp(client->tp, pkt, size);
 
 	return status;
+}
+
+void ice_client_disconnect(void)
+{
+	/* Hangup current calls */
+	pjsua_call_hangup(current_call, 0, NULL, NULL);
 }
 
 pj_status_t ice_client_destroy(void)

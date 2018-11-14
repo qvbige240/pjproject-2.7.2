@@ -84,6 +84,13 @@
 #include <signal.h>
 #include <getopt.h>
 
+
+static void safe_flush(FILE *fp)
+{
+	int ch;
+	while( (ch = fgetc(fp)) != EOF && ch != '\n' );
+}
+
 static void setup_socket_signal()
 {
 	signal(SIGPIPE, SIG_IGN);
@@ -196,8 +203,8 @@ int main_func(int argc, char *argv[])
 	ice_client_status();
 
 	char ch = '0';
-	printf("\n\n\nplease press 's' to start connect\n");
-	while (ch != 's') {
+	printf("\n\n\nplease press 'm' to start connect\n");
+	while (ch != 'm') {
 		scanf("%c", &ch);
 	}
 	printf("ch = %c\n\n\n", ch);
@@ -206,14 +213,32 @@ int main_func(int argc, char *argv[])
 
 	while (1) {
 
-		while (ch != '\n') {
-			scanf("%c", &ch);
+		printf("\n\n\nEnter code: ");
+		scanf("%c", &ch);
+		safe_flush(stdin);
+		printf("ch = %c\n\n", ch);
+
+		switch (ch) {
+			case 'm':
+				ice_make_connect(remote_uri);
+				break;
+			case 'h':
+				ice_client_disconnect();
+				break;
+			case '\n':
+				ice_client_status();
+				break;
+			default:break;
 		}
-		ch = '0';
 
-		ice_client_status();
+		//while (ch != '\n') {
+		//	scanf("%c", &ch);
+		//}
+		//ch = '0';
 
-		sleep(3);
+		//ice_client_status();
+
+		//sleep(3);
 
 	}
 

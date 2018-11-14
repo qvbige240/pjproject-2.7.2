@@ -185,6 +185,8 @@ pj_status_t ice_client_register(iclient_callback *ctx);
 
 void ice_make_connect(char *uri);
 
+void ice_client_disconnect(void);
+
 pj_status_t ice_packet_send(const void *pkt, pj_size_t size);
 
 pj_status_t ice_client_destroy(void);

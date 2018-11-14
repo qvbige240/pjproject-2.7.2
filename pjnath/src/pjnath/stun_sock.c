@@ -547,9 +547,9 @@ PJ_DEF(pj_status_t) pj_stun_tcp_sock_create( pj_stun_config *stun_cfg,
 	//if (stcp_sock->ka_interval == 0)
 	//	stcp_sock->ka_interval = PJ_STUN_KEEP_ALIVE_SEC;
 
-	if (cfg->grp_lock) {
+	/*if (cfg->grp_lock) {
 		stcp_sock->grp_lock = cfg->grp_lock;
-	} else {
+	} else*/ {
 		status = pj_grp_lock_create(pool, NULL, &stcp_sock->grp_lock);
 		if (status != PJ_SUCCESS) {
 			PJ_LOG(4, (stcp_sock->pool->obj_name, "=====22222222 %d", status));
@@ -1162,13 +1162,17 @@ PJ_DEF(pj_status_t) pj_stun_sock_destroy(pj_stun_sock *stun_sock)
     pj_timer_heap_cancel_if_active(stun_sock->stun_cfg.timer_heap,
                                    &stun_sock->ka_timer, 0);
 
-    if (stun_sock->active_sock != NULL) {
-	stun_sock->sock_fd = PJ_INVALID_SOCKET;
-	pj_activesock_close(stun_sock->active_sock);
-    } else if (stun_sock->sock_fd != PJ_INVALID_SOCKET) {
-	pj_sock_close(stun_sock->sock_fd);
-	stun_sock->sock_fd = PJ_INVALID_SOCKET;
-    }
+	// qing.zou added
+	if (stun_sock->asock)
+		pj_activesock_close(stun_sock->asock);
+
+	if (stun_sock->active_sock != NULL) {
+		stun_sock->sock_fd = PJ_INVALID_SOCKET;
+		pj_activesock_close(stun_sock->active_sock);
+	} else if (stun_sock->sock_fd != PJ_INVALID_SOCKET) {
+		pj_sock_close(stun_sock->sock_fd);
+		stun_sock->sock_fd = PJ_INVALID_SOCKET;
+	}
 
     if (stun_sock->stun_sess) {
 	pj_stun_session_destroy(stun_sock->stun_sess);

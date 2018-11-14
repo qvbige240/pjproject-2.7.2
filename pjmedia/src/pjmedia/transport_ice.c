@@ -317,15 +317,29 @@ pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id)
 	//pj_sockaddr_t *dst_addr = &ca->rcand_addr;
  	pj_sockaddr_t *dst_addr = NULL;
 	int same_subnet = 0;
+	int reachable = 0;
  
  	/* Compare addresses */
  	int result = pj_memcmp(pj_sockaddr_get_addr(&ca->lcand_addr),
  		pj_sockaddr_get_addr(&ca->rcand_addr),
  		pj_sockaddr_get_addr_len(&ca->lcand_addr));
- 	if (result != 0)
+	if (result != 0) {
  		dst_addr = &ca->rcand_addr;
- 	else {
- 		//pj_thread_sleep(50);
+
+		pj_uint16_t rport;
+		char rip[PJ_INET6_ADDRSTRLEN+10];
+
+		rport = pj_sockaddr_get_port(&ca->rcand_addr);
+		strcpy(rip, pj_inet_ntoa(*(pj_in_addr*)pj_sockaddr_get_addr(dst_addr)));
+		if (id == 1) {		/* server */
+			reachable = vpk_lan_server(lport+100, rport+100);
+			if (!reachable)
+				vpk_lan_client(rip, rport+100, lport+100);
+		} else {
+			vpk_lan_client(rip, rport+100, lport+100);
+			reachable = vpk_lan_server(lport+100, rport+100);
+		}
+	} else { /** the same subnet **/
  		pj_uint16_t rbaseport;
  		char rbaseip[PJ_INET6_ADDRSTRLEN+10];
  
@@ -338,9 +352,11 @@ pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id)
  		} 
  
  		dst_addr = &ca->rbase_addr;
- 	}
+	}
+
+	PJ_LOG(4,(THIS_FILE, "=========== same_subnet: %d, reachable: %d", same_subnet, reachable));
  
- 	if (same_subnet) {		/* server */
+ 	if (same_subnet || reachable) {		/* server */
  		status = ice_stun_tcp(tp_ice->ice_st, lport, NULL);
  	} else {
 		status = ice_stun_tcp(tp_ice->ice_st, lport, dst_addr);

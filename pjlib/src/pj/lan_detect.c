@@ -487,6 +487,7 @@ int vpk_lan_server(int lport, int rport)
 	char recv_buff[MAXBUF] = {0};
 
 	int server = test_socket_create(lport);
+	LOG_D("create ttl server fd[%d]\n", server);
 
 	addr_get_from_sock(server, (vpk_sockaddr*)&my_addr);
 
@@ -560,24 +561,25 @@ int vpk_lan_server(int lport, int rport)
 		memset(&remote_addr, 0, sizeof(struct sockaddr_in));
 		udp_recvfrom(server, (vpk_sockaddr*)&remote_addr, (vpk_sockaddr*)&my_addr, recv_buff, MAXBUF, &ttl, &tos, cmsg, 0, NULL);
 		LOG_D("remote_addr: %s:%d, my_addr: %s:%d\n", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port) , inet_ntoa(my_addr.sin_addr), ntohs(my_addr.sin_port));
-		LOG_D("TTL: %d\n", ttl);
+		LOG_D("recv rport[%d] ttl: %d\n", ntohs(remote_addr.sin_port), ttl);
 	}
-	lan = ((ttl == 64) && (ntohs(remote_addr.sin_port) == rport));
+	lan = (/*(ttl == 64) &&*/ (ntohs(remote_addr.sin_port) == rport));
 	{
 		memset(&remote_addr, 0, sizeof(struct sockaddr_in));
 		udp_recvfrom(server, (vpk_sockaddr*)&remote_addr, (vpk_sockaddr*)&my_addr, recv_buff, MAXBUF, &ttl, &tos, cmsg, 0, NULL);
 		LOG_D("remote_addr: %s:%d, my_addr: %s:%d\n", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port) , inet_ntoa(my_addr.sin_addr), ntohs(my_addr.sin_port));
-		LOG_D("TTL: %d\n", ttl);
+		LOG_D("recv rport[%d] ttl: %d\n", ntohs(remote_addr.sin_port), ttl);
 	}
-	lan |= ((ttl == 64) && (ntohs(remote_addr.sin_port) == rport));
+	lan |= (/*(ttl == 64) &&*/ (ntohs(remote_addr.sin_port) == rport));
 	{
 		memset(&remote_addr, 0, sizeof(struct sockaddr_in));
 		udp_recvfrom(server, (vpk_sockaddr*)&remote_addr, (vpk_sockaddr*)&my_addr, recv_buff, MAXBUF, &ttl, &tos, cmsg, 0, NULL);
 		LOG_D("remote_addr: %s:%d, my_addr: %s:%d\n", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port) , inet_ntoa(my_addr.sin_addr), ntohs(my_addr.sin_port));
-		LOG_D("TTL: %d\n", ttl);
+		LOG_D("recv rport[%d] ttl: %d\n", ntohs(remote_addr.sin_port), ttl);
 	}
-	lan |= ((ttl == 64) && (ntohs(remote_addr.sin_port) == rport));
+	lan |= (/*(ttl == 64) &&*/ (ntohs(remote_addr.sin_port) == rport));
 #endif
+	close(server);
 
 	return lan;
 }
@@ -587,6 +589,7 @@ int vpk_lan_client(const char* ip, int port, int lport)
 	const char* msg = "hello world";
 	struct sockaddr_in remote_addr;
 	int client = test_socket_create(lport);
+	LOG_D("create ttl client fd[%d]\n", client);
 	set_socket_ttl(client, 64);
 
 	memset(&remote_addr, 0, sizeof(remote_addr));
@@ -600,6 +603,8 @@ int vpk_lan_client(const char* ip, int port, int lport)
 	usleep(200000);
 	udp_send(client, (vpk_sockaddr*)&remote_addr, msg, strlen(msg));
 	usleep(300000);
+
+	close(client);
 
 	return 0;
 }

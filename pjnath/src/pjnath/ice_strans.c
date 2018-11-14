@@ -505,7 +505,7 @@ pj_status_t ice_stun_tcp(pj_ice_strans *ice_st, pj_uint16_t lport, pj_sockaddr_t
 		pj_AF_INET(), &stun_sock_cb, sock_cfg, data, &comp->tcp.sock);
 	if (status != PJ_SUCCESS) {
 		PJ_LOG(3, (ice_st->obj_name, "tcp_sock_create failed retry"));
-		pj_thread_sleep(10);
+		pj_thread_sleep(50);
 		status = pj_stun_tcp_sock_create(&ice_st->cfg.stun_cfg, dst_addr, lport,
 			pj_AF_INET(), &stun_sock_cb, sock_cfg, data, &comp->tcp.sock);
 		if (status != PJ_SUCCESS) {

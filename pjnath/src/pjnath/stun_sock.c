@@ -204,8 +204,8 @@ static pj_bool_t on_connect_complete(pj_activesock_t *asock,
 	}
 
 	//if (stcp_sock->conn_type != PJ_TURN_TP_UDP) {
-	PJ_LOG(4,(stcp_sock->obj_name, "=========================================="));
-	PJ_LOG(4,(stcp_sock->obj_name, "============== TCP connected ===================="));
+	PJ_LOG(4,(stcp_sock->obj_name, "================================================="));
+	PJ_LOG(4,(stcp_sock->obj_name, "================= TCP connected ================="));
 	//}
 
 	/* Kick start pending read operation */
@@ -627,7 +627,7 @@ PJ_DEF(pj_status_t) pj_stun_tcp_sock_create( pj_stun_config *stun_cfg,
 	addr_len = pj_sockaddr_get_len(&bind_addr);
 	status = pj_sock_bind(stcp_sock->sock_fd, &bind_addr, addr_len);
 	if (status != PJ_SUCCESS) {
-		PJ_LOG(4, (stcp_sock->pool->obj_name, "=====6666666666 %d", status));
+		PJ_LOG(4, (stcp_sock->pool->obj_name, "======= pj_sock_bind [%d] error: %d", lport, status));
 		goto on_error;
 	}
 

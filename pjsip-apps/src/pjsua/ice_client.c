@@ -571,7 +571,25 @@ static void on_ice_connection_success(void *tp, void *param)
 }
 
 /*
- * ice connect successfully callback.
+ * socket disconnect.
+ */
+static void on_ice_socket_disconnect(void *tp, void *param)
+{
+	socket_client *client = (socket_client *)app_config.client;
+
+	PJ_LOG(4, (THIS_FILE, "========ice socket disconnect."));
+	if (tp && client) {
+		if (client->cb.on_sock_disconnect)
+			client->cb.on_sock_disconnect(client->ctx, NULL);
+		else
+			PJ_LOG(3, (THIS_FILE, "without register callback function: on_sock_disconnect."));
+	} else {
+		PJ_LOG(3, (THIS_FILE, "null pointer error."));
+	}
+}
+
+/*
+ * socket can write data to fd
  */
 static void on_ice_socket_writable(void *tp, void *param)
 {
@@ -695,6 +713,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 
 	app_config.cfg.cb.on_ice_negotiation_success = &on_ice_negotiation_success;
 	app_config.cfg.cb.on_ice_connection_success = &on_ice_connection_success;
+	app_config.cfg.cb.on_ice_socket_disconnect = &on_ice_socket_disconnect;
 	app_config.cfg.cb.on_ice_socket_writable = &on_ice_socket_writable;
 	app_config.cfg.cb.on_ice_receive_message = &on_ice_receive_message;
 
@@ -872,6 +891,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 
 	client->ctx = ctx;
 	client->cb.on_connect_success = ctx->on_connect_success;
+	client->cb.on_sock_disconnect = ctx->on_sock_disconnect;
 	client->cb.on_socket_writable = ctx->on_socket_writable;
 	client->cb.on_receive_message = ctx->on_receive_message;
 

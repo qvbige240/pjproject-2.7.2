@@ -1691,6 +1691,10 @@ static void on_ice_complete(pjmedia_transport *tp,
 			(*pjsua_var.ua_cfg.cb.on_ice_transport_error)(id, op, result, NULL);
 		}
 		break;
+	case PJ_ICE_STRANS_OP_DISCONNECT:
+		if (call && pjsua_var.ua_cfg.cb.on_ice_socket_disconnect)
+			(*pjsua_var.ua_cfg.cb.on_ice_socket_disconnect)(call_med->tp, NULL);
+		break;
 	}
 }
 

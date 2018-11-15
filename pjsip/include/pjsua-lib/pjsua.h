@@ -1445,6 +1445,8 @@ typedef struct pjsua_callback
 
 	void (*on_ice_connection_success)(void *ctx, void *param);
 
+	void (*on_ice_socket_disconnect)(void *ctx, void *param);
+
 	void (*on_ice_socket_writable)(void *ctx, void *param);
 
 	void (*on_ice_receive_message)(void *data, void *pkt, pj_ssize_t bytes_read);

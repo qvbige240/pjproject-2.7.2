@@ -484,6 +484,10 @@ static pj_bool_t on_data_read(pj_activesock_t *asock,
 		//sess_fail(stcp_sock, "TCP connection closed", status);
 		pj_perror(3, stcp_sock->pool->obj_name, status, "TCP connection closed");
 		PJ_PERROR(3,(stcp_sock->obj_name, status, "TCP connection closed"));
+
+		if (stcp_sock->cb.on_status)
+			(*stcp_sock->cb.on_status)(stcp_sock, PJ_STUN_SOCK_TCP_DISCONNECT, status);
+
 		ret = PJ_FALSE;
 		goto on_return;
 	}

@@ -5,8 +5,9 @@
 #include "media_dev_impl.h"
 
 static void on_connect_success(void *ctx, void *param);
-static void on_socket_writable(void *ctx, void *param);
 static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read);
+static void on_socket_writable(void *ctx, void *param);
+static void on_sock_disconnect(void *ctx, void *param);
 
 
 typedef struct pkt_node {
@@ -257,6 +258,7 @@ vpk_stream_t* vpk_stream_create(pj_pool_t *pool)
 
 	//iclient_callback op = {0};
 	thiz->op.on_connect_success = on_connect_success;
+	thiz->op.on_sock_disconnect = on_sock_disconnect;
 	thiz->op.on_socket_writable = on_socket_writable;
 	thiz->op.on_receive_message = on_receive_message;
 
@@ -339,6 +341,15 @@ static void on_connect_success(void *ctx, void *param)
 
 	file_stream_start(thiz->file);
 	stream_transport_start(thiz->send);
+}
+
+static void on_sock_disconnect(void *ctx, void *param)
+{
+	vpk_stream_t *thiz = (vpk_stream_t *)ctx;
+
+	pj_assert(ctx);
+
+	ice_client_disconnect();
 }
 
 static void on_socket_writable(void *ctx, void *param)

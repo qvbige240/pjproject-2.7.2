@@ -137,6 +137,9 @@ typedef enum pj_ice_strans_op
 	/** Negotiation */
 	PJ_ICE_STRANS_OP_NEGOTIATION_TCP,
 
+	/** Socket disconnect */
+	PJ_ICE_STRANS_OP_DISCONNECT,
+
 } pj_ice_strans_op;
 
 /** 

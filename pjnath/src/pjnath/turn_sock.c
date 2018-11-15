@@ -654,6 +654,7 @@ static pj_bool_t on_data_read(pj_activesock_t *asock,
 		turn_sock->conn_type != PJ_TURN_TP_UDP) 
 	{
 		sess_fail(turn_sock, "TCP connection closed", status);
+		PJ_PERROR(3,(turn_sock->obj_name, status, "[turn]TCP connection closed"));
 		ret = PJ_FALSE;
 		goto on_return;
 	}

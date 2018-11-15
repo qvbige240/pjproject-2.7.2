@@ -2021,6 +2021,11 @@ static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
 				(*cb.on_ice_complete)(ice_st, PJ_ICE_STRANS_OP_NEGOTIATION_TCP, status);
 			}
 			break;
+		case PJ_STUN_SOCK_TCP_DISCONNECT:
+			if (cb.on_ice_complete) {
+				(*cb.on_ice_complete)(ice_st, PJ_ICE_STRANS_OP_DISCONNECT, status);
+			}
+			break;
 		default:
 			PJ_LOG(4, (ice_st->obj_name, "tcp_on_status STUN status unknown"));
 			break;

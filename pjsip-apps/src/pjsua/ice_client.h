@@ -195,6 +195,10 @@ pj_status_t ice_client_destroy(void);
 
 void ice_client_status(void);
 
+pj_pool_t* ice_pool_get(void);
+
+pj_pool_t* ice_pool_create(const char *name, pj_size_t init_size, pj_size_t increment);
+
 PJ_END_DECL
 
 #endif	/* __ICE_CLIENT_H__ */

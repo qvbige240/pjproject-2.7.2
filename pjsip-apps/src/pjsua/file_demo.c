@@ -312,14 +312,18 @@ void file_entry(void)
 	pj_caching_pool		cache;	    /**< Global pool factory.		*/
 	pj_pool_t			*pool;	
 
-	/* Init caching pool. */
-	pj_caching_pool_init(&cache, NULL, 0);
+	if (0) {
+		/* Init caching pool. */
+		pj_caching_pool_init(&cache, NULL, 0);
 
-	/* Create memory pool for demo. */
-	//pool = pjsua_pool_create("demo", 1000, 1000);
-	/* Pool factory is thread safe, no need to lock */
-	pool = pj_pool_create(&cache.factory, "demo", 1000, 1000, NULL);
-
+		/* Create memory pool for demo. */
+		//pool = pjsua_pool_create("demo", 1000, 1000);
+		/* Pool factory is thread safe, no need to lock */
+		pool = pj_pool_create(&cache.factory, "demo", 200, 1000, NULL);
+	} else {
+		//pool = ice_pool_get(); //or
+		pool = ice_pool_create("demo", 200, 1000);
+	}
 
 	vpk_stream_t* stream = vpk_stream_create(pool);
 

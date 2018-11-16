@@ -981,3 +981,13 @@ pj_status_t ice_thread_register(const char *thread_name)
 		//PJSUA2_RAISE_ERROR(status);
 	}
 }
+
+pj_pool_t* ice_pool_get()
+{
+	return app_config.pool;
+}
+
+pj_pool_t* ice_pool_create(const char *name, pj_size_t init_size, pj_size_t increment)
+{
+	return pjsua_pool_create(name, init_size, increment);
+}

@@ -75,7 +75,9 @@ enum timer_type
 				     valid check for every components.	*/
     TIMER_START_NOMINATED_CHECK,/**< Controlling agent start connectivity
 				     checks with USE-CANDIDATE flag.	*/
-    TIMER_KEEP_ALIVE		/**< ICE keep-alive timer.		*/
+	TIMER_KEEP_ALIVE,		/**< ICE keep-alive timer.		*/
+
+	TIMER_HEART_BEAT		/**< ICE heart-beat timer.		*/
 
 };
 
@@ -135,6 +137,7 @@ typedef struct timer_data
 static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te);
 static void on_ice_complete(pj_ice_sess *ice, pj_status_t status);
 static void ice_keep_alive(pj_ice_sess *ice, pj_bool_t send_now);
+static void ice_heart_beat(pj_ice_sess *ice, int val);
 static void ice_on_destroy(void *obj);
 static void destroy_ice(pj_ice_sess *ice,
 			pj_status_t reason);
@@ -359,6 +362,7 @@ PJ_DEF(pj_status_t) pj_ice_sess_create(pj_stun_config *stun_cfg,
     pj_ice_sess_options_default(&ice->opt);
 
     pj_timer_entry_init(&ice->timer, TIMER_NONE, (void*)ice, &on_timer);
+	pj_timer_entry_init(&ice->beat_timer, TIMER_HEART_BEAT, (void*)ice, &on_timer);
 
     pj_ansi_snprintf(ice->obj_name, sizeof(ice->obj_name),
 		     name, ice);
@@ -489,6 +493,8 @@ static void destroy_ice(pj_ice_sess *ice,
 
     pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap,
                                    &ice->timer, PJ_FALSE);
+	pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap,
+		&ice->beat_timer, PJ_FALSE);
 
     for (i=0; i<ice->comp_cnt; ++i) {
 	if (ice->comp[i].stun_sess) {
@@ -1166,8 +1172,10 @@ static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
 	     * Need to do it here just in case app destroy the session
 	     * in the callback.
 	     */
-	    if (ice->ice_status == PJ_SUCCESS)
-		ice_keep_alive(ice, PJ_FALSE);
+			if (ice->ice_status == PJ_SUCCESS) {
+				ice_keep_alive(ice, PJ_FALSE);
+				ice_heart_beat(ice, 0);
+			}
 
 	    /* Release mutex in case app destroy us in the callback */
 	    ice_status = ice->ice_status;
@@ -1182,8 +1190,11 @@ static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
 	start_nominated_check(ice);
 	break;
     case TIMER_KEEP_ALIVE:
-	ice_keep_alive(ice, PJ_TRUE);
+		ice_keep_alive(ice, PJ_TRUE);
 	break;
+	case TIMER_HEART_BEAT:
+		ice_heart_beat(ice, 5);
+		break;
     case TIMER_NONE:
 	/* Nothing to do, just to get rid of gcc warning */
 	break;
@@ -1257,6 +1268,27 @@ done:
     } else {
 	pj_assert(!"Not expected any timer active");
     }
+}
+
+/* Proc heart beat */
+static void ice_heart_beat(pj_ice_sess *ice, int val)
+{
+	pj_time_val delay = { 5, 0 };
+
+	//delay.msec = 5000;
+	//pj_time_val_normalize(&delay);
+
+	ice->beat_counter += val;
+	LOG4((ice->obj_name, "====beat_counter: %d", ice->beat_counter));
+	if (ice->beat_counter >= 25)
+	{
+		/* Notify app about ICE completion*/
+		if (ice->cb.on_ice_disconnect)
+			(*ice->cb.on_ice_disconnect)(ice, PJ_TRUE);
+	}
+
+	pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
+		&ice->beat_timer, &delay, TIMER_HEART_BEAT, ice->grp_lock);
 }
 
 /* This function is called when ICE processing completes */
@@ -2964,9 +2996,13 @@ static pj_status_t on_stun_rx_indication(pj_stun_session *sess,
 
     pj_log_push_indent();
 
-    if (msg->hdr.type == PJ_STUN_BINDING_INDICATION) {
-	LOG5((sd->ice->obj_name, "Received Binding Indication keep-alive "
-	      "for component %d", sd->comp_id));
+	if (msg->hdr.type == PJ_STUN_BINDING_INDICATION) {
+
+		pj_grp_lock_acquire(sd->ice->grp_lock);
+		sd->ice->beat_counter = 0;
+		pj_grp_lock_release(sd->ice->grp_lock);
+
+		LOG5((sd->ice->obj_name, "Received Binding Indication keep-alive for component %d", sd->comp_id));
     } else {
 	LOG4((sd->ice->obj_name, "Received unexpected %s indication "
 	      "for component %d", pj_stun_get_method_name(msg->hdr.type), 

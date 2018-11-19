@@ -480,6 +480,15 @@ typedef struct pj_ice_sess_cb
     void	(*on_ice_complete)(pj_ice_sess *ice, pj_status_t status);
 
     /**
+     * An optional callback that will be called by the ICE session when
+     * ICE negotiation disconnect.
+     *
+     * @param ice	    The ICE session.
+     * @param status	Some error code.
+     */
+    void	(*on_ice_disconnect)(pj_ice_sess *ice, pj_status_t status);
+
+    /**
      * A mandatory callback which will be called by the ICE session when
      * it needs to send outgoing STUN packet. 
      *
@@ -633,6 +642,11 @@ struct pj_ice_sess
     pj_ice_sess_cb	 cb;			    /**< Callback.	    */
 
     pj_stun_config	 stun_cfg;		    /**< STUN settings.	    */
+
+	// qing.zou
+	pj_timer_entry	 beat_timer;			 /**< ICE heart-beat timer.	    */
+	int		 		 beat_counter;
+
 
     /* STUN credentials */
     pj_str_t		 tx_ufrag;		    /**< Remote ufrag.	    */

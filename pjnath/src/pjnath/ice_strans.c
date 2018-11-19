@@ -90,6 +90,7 @@ static pj_uint8_t srflx_pref_table[PJ_ICE_CAND_TYPE_MAX] =
 
 /* ICE callbacks */
 static void	   on_ice_complete(pj_ice_sess *ice, pj_status_t status);
+static void	   on_ice_disconnect(pj_ice_sess *ice, pj_status_t status);
 static pj_status_t ice_tx_pkt(pj_ice_sess *ice,
 			      unsigned comp_id,
 			      unsigned transport_id,
@@ -1158,6 +1159,7 @@ PJ_DEF(pj_status_t) pj_ice_strans_init_ice(pj_ice_strans *ice_st,
     /* Init callback */
     pj_bzero(&ice_cb, sizeof(ice_cb));
     ice_cb.on_ice_complete = &on_ice_complete;
+	ice_cb.on_ice_disconnect = &on_ice_disconnect;
     ice_cb.on_rx_data = &ice_rx_data;
     ice_cb.on_tx_pkt = &ice_tx_pkt;
 
@@ -1667,6 +1669,18 @@ PJ_DEF(pj_status_t) pj_ice_strans_sendto( pj_ice_strans *ice_st,
 
     } else
 	return PJ_EINVALIDOP;
+}
+
+static void on_ice_disconnect(pj_ice_sess *ice, pj_status_t status)
+{
+	pj_ice_strans *ice_st = (pj_ice_strans*)ice->user_data;
+	pj_ice_strans_cb cb = ice_st->cb;
+
+	pj_grp_lock_add_ref(ice_st->grp_lock);
+	if (cb.on_ice_complete) {
+		(*cb.on_ice_complete)(ice_st, PJ_ICE_STRANS_OP_DISCONNECT, status);
+	}
+	pj_grp_lock_dec_ref(ice_st->grp_lock);
 }
 
 /*

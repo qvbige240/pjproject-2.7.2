@@ -409,6 +409,13 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 		///* Stop all ringback for this call */
 		//ring_stop(call_id);
 
+		socket_client *client = (socket_client *)app_config.client;
+		if (client && client->cb.on_socket_clearing) {
+			client->cb.on_socket_clearing(client->ctx, NULL);
+		} else {
+			PJ_LOG(3, (THIS_FILE, "on_socket_clearing: without register or null pointer."));
+		}
+
 		/* Cancel duration timer, if any */
 		if (app_config.call_data[call_id].timer.id != PJSUA_INVALID_ID) {
 			app_call_data *cd = &app_config.call_data[call_id];
@@ -578,6 +585,7 @@ static void on_ice_socket_disconnect(void *tp, void *param)
 	socket_client *client = (socket_client *)app_config.client;
 
 	PJ_LOG(4, (THIS_FILE, "========ice socket disconnect."));
+	pjsua_call_hangup(current_call, 0, NULL, NULL);
 	if (tp && client) {
 		if (client->cb.on_sock_disconnect)
 			client->cb.on_sock_disconnect(client->ctx, NULL);
@@ -892,6 +900,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 	client->ctx = ctx;
 	client->cb.on_connect_success = ctx->on_connect_success;
 	client->cb.on_sock_disconnect = ctx->on_sock_disconnect;
+	client->cb.on_socket_clearing = ctx->on_socket_clearing;
 	client->cb.on_socket_writable = ctx->on_socket_writable;
 	client->cb.on_receive_message = ctx->on_receive_message;
 

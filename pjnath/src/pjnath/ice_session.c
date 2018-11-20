@@ -1282,13 +1282,14 @@ static void ice_heart_beat(pj_ice_sess *ice, int val)
 	LOG4((ice->obj_name, "====beat_counter: %d", ice->beat_counter));
 	if (ice->beat_counter >= 25)
 	{
-		/* Notify app about ICE completion*/
+		/* Notify app about ICE disconnect */
 		if (ice->cb.on_ice_disconnect)
 			(*ice->cb.on_ice_disconnect)(ice, PJ_TRUE);
+	} else {
+		pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
+			&ice->beat_timer, &delay, TIMER_HEART_BEAT, ice->grp_lock);
 	}
 
-	pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
-		&ice->beat_timer, &delay, TIMER_HEART_BEAT, ice->grp_lock);
 }
 
 /* This function is called when ICE processing completes */

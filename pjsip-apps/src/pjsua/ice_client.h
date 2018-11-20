@@ -80,6 +80,8 @@ typedef struct iclient_callback
 
 	void (*on_sock_disconnect)(void *ctx, void *param);
 
+	void (*on_socket_clearing)(void *ctx, void *param);
+
 	void (*on_socket_writable)(void *ctx, void *param);
 
 	void (*on_receive_message)(void *ctx, void *pkt, pj_ssize_t bytes_read);

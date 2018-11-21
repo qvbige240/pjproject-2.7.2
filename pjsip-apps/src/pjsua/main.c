@@ -181,6 +181,7 @@ int main_func(int argc, char *argv[])
 		sprintf(remote_uri, "sip:101@%s", info.server);
 	}
 
+	printf("======remote_uri: %s, server: %s\n", remote_uri, info.server);
 	ice_client_init(&info);
 
 

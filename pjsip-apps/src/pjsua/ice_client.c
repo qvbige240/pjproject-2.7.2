@@ -286,7 +286,7 @@ char* pj_strdup0(pj_pool_t *pool, char **dst, const char *src)
 {
 	pj_ssize_t slen = src ? pj_ansi_strlen(src) : 0;
 	if (slen) {
-		*dst = (char*)pj_pool_alloc(pool, slen);
+		*dst = (char*)pj_pool_zalloc(pool, slen+1);
 		pj_memcpy(*dst, src, slen);
 	} else {
 		*dst = NULL;
@@ -312,10 +312,14 @@ static pj_status_t set_args(ice_info_t *param)
 	sprintf(id_tmp, "sip:%s@%s", info->account, info->server);
 	sprintf(turn_tmp, "%s:%s", info->turn, info->turn_port);
 	sprintf(url_tmp, "sip:%s", info->server);
+	printf("======id_tmp: %s, turn_tmp: %s, url_tmp: %s\n", id_tmp, turn_tmp, url_tmp);
+
 	//char* id = "sip:102@172.17.13.8";
 	pj_strdup0(app_config.pool, &id, id_tmp);
 	pj_strdup0(app_config.pool, &turn, turn_tmp);
 	pj_strdup0(app_config.pool, &url, url_tmp);
+
+	printf("======id: %s, turn: %s, url: %s\n", id, turn, url);
 
 	/* id */
 	if (pjsua_verify_url(id) != 0) {
@@ -410,6 +414,7 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 		//ring_stop(call_id);
 
 		socket_client *client = (socket_client *)app_config.client;
+		client->connected = 0;
 		if (client && client->cb.on_socket_clearing) {
 			client->cb.on_socket_clearing(client->ctx, NULL);
 		} else {
@@ -587,6 +592,7 @@ static void on_ice_socket_disconnect(void *tp, void *param)
 	PJ_LOG(4, (THIS_FILE, "========ice socket disconnect."));
 	pjsua_call_hangup(current_call, 0, NULL, NULL);
 	if (tp && client) {
+		client->connected = 0;
 		if (client->cb.on_sock_disconnect)
 			client->cb.on_sock_disconnect(client->ctx, NULL);
 		else
@@ -664,7 +670,6 @@ pj_status_t ice_client_init(ice_info_t *info)
 	pj_pool_t *tmp_pool;
 	pj_status_t status;
 
-	//PJ_LOG(1,(THIS_FILE, "pjsua_create"));
 	/** Create pjsua **/
 	status = pjsua_create();
 	if (status != PJ_SUCCESS)

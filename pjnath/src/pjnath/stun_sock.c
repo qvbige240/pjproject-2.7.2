@@ -56,6 +56,8 @@ struct pj_stun_sock
 	pj_activesock_t			*asock;	 /* Active socket object for server    */
 	pj_ioqueue_op_key_t		op_key;
 
+	pj_uint8_t				tx_pkt[PJ_TURN_MAX_PKT_LEN];
+
 	int			 ka_interval;	/* Keep alive interval	    */
 	pj_timer_entry	 ka_timer;	/* Keep alive timer.	    */
 
@@ -408,7 +410,8 @@ static int stun_on_rx_pkt(pj_stun_sock *tcp_sock, void *pkt, pj_size_t pkt_len, 
 	} else {
 		if (parsed_len) {
 			/* Apply padding too */
-			*parsed_len = ((hd.length + 3) & (~3)) + sizeof(hd);
+			//*parsed_len = ((hd.length + 3) & (~3)) + sizeof(hd);
+			*parsed_len = ((hd.length + sizeof(hd) + 3) & (~3));
 		}
 	}
 
@@ -1410,12 +1413,13 @@ PJ_DEF(pj_status_t) pj_stun_sock_send( pj_stun_sock *tcp_sock,
 	}
 
 	unsigned total_len;
-	pj_uint8_t	tx_pkt[PJ_TURN_MAX_PKT_LEN];		//...
+	//pj_uint8_t	tx_pkt[PJ_TURN_MAX_PKT_LEN];		//...
+	pj_uint8_t*	tx_pkt = tcp_sock->tx_pkt;
 	pj_stun_header_data *hd = (pj_stun_header_data *)tx_pkt;
 
 	/* Calculate total length, including paddings */
 	total_len = (pkt_len + sizeof(*hd) + 3) & (~3);
-	if (total_len > sizeof(tx_pkt)) {
+	if (total_len > sizeof(tcp_sock->tx_pkt)) {
 		status = PJ_ETOOBIG;
 		goto on_return;
 	}
@@ -1426,7 +1430,7 @@ PJ_DEF(pj_status_t) pj_stun_sock_send( pj_stun_sock *tcp_sock,
 
 	size = total_len;
 
-	printf("==================== tcp send\n");
+	//printf("==================== tcp send\n");
 
 	//status = pj_activesock_send(tcp_sock->active_sock, send_key, pkt, &size, 0);
 	status = pj_activesock_send(asock, send_key, tx_pkt, &size, 0);

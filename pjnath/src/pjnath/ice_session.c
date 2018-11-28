@@ -364,8 +364,7 @@ PJ_DEF(pj_status_t) pj_ice_sess_create(pj_stun_config *stun_cfg,
     pj_timer_entry_init(&ice->timer, TIMER_NONE, (void*)ice, &on_timer);
 	pj_timer_entry_init(&ice->beat_timer, TIMER_HEART_BEAT, (void*)ice, &on_timer);
 
-    pj_ansi_snprintf(ice->obj_name, sizeof(ice->obj_name),
-		     name, ice);
+	pj_ansi_snprintf(ice->obj_name, sizeof(ice->obj_name), name, ice);
 
     if (grp_lock) {
 	ice->grp_lock = grp_lock;
@@ -493,8 +492,7 @@ static void destroy_ice(pj_ice_sess *ice,
 
     pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap,
                                    &ice->timer, PJ_FALSE);
-	pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap,
-		&ice->beat_timer, PJ_FALSE);
+	pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap, &ice->beat_timer, PJ_FALSE);
 
     for (i=0; i<ice->comp_cnt; ++i) {
 	if (ice->comp[i].stun_sess) {

@@ -312,7 +312,7 @@ static pj_status_t set_args(ice_info_t *param)
 	sprintf(id_tmp, "sip:%s@%s", info->account, info->server);
 	sprintf(turn_tmp, "%s:%s", info->turn, info->turn_port);
 	sprintf(url_tmp, "sip:%s", info->server);
-	printf("======id_tmp: %s, turn_tmp: %s, url_tmp: %s\n", id_tmp, turn_tmp, url_tmp);
+	//printf("======id_tmp: %s, turn_tmp: %s, url_tmp: %s\n", id_tmp, turn_tmp, url_tmp);
 
 	//char* id = "sip:102@172.17.13.8";
 	pj_strdup0(app_config.pool, &id, id_tmp);
@@ -697,7 +697,9 @@ pj_status_t ice_client_init(ice_info_t *info)
 	//pj_strcpy(info.turn, "172.17.13.8:3488");
 	//pj_strcpy(info.username, "username2");
 	//pj_strcpy(info.password, "password2");
-	set_args(info);
+	status = set_args(info);
+	if (status != PJ_SUCCESS)
+		return status;
 
 	/* Initialize application callbacks */
 	app_config.cfg.cb.on_call_state = &on_call_state;

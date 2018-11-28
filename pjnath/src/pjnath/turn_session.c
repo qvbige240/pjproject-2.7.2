@@ -762,12 +762,22 @@ PJ_DEF(pj_status_t) pj_turn_session_alloc(pj_turn_session *sess,
 			      PJ_STUN_ATTR_REQ_TRANSPORT, 
 			      PJ_STUN_SET_RT_PROTO(PJ_TURN_TP_UDP));
 
-    /* Include BANDWIDTH if requested */
-    if (sess->alloc_param.bandwidth > 0) {
-	pj_stun_msg_add_uint_attr(tdata->pool, tdata->msg,
-				  PJ_STUN_ATTR_BANDWIDTH,
-				  sess->alloc_param.bandwidth);
-    }
+	///* MUST include REQUESTED-TRANSPORT attribute */
+	//pj_stun_msg_add_uint_attr(tdata->pool, tdata->msg,
+	//	PJ_STUN_ATTR_REQ_TRANSPORT, 
+	//	PJ_STUN_SET_RT_PROTO(sess->conn_type));
+
+	///* MUST include REQUESTED-TRANSPORT attribute */
+	//pj_stun_msg_add_uint_attr(tdata->pool, tdata->msg,
+	//	PJ_STUN_ATTR_REQ_TRANSPORT, 
+	//	PJ_STUN_SET_RT_PROTO(PJ_TURN_TP_TCP));	
+
+	/* Include BANDWIDTH if requested */
+	if (sess->alloc_param.bandwidth > 0) {
+		pj_stun_msg_add_uint_attr(tdata->pool, tdata->msg,
+			PJ_STUN_ATTR_BANDWIDTH,
+			sess->alloc_param.bandwidth);
+	}
 
     /* Include LIFETIME if requested */
     if (sess->alloc_param.lifetime > 0) {

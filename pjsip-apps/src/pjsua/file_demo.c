@@ -104,10 +104,10 @@ static int stream_transport_init(/*vpk_stream_t* stream, */pj_pool_t *pool, stre
 	return 0;
 }
 
-static int stream_transport_start(stream_transport_t *stream)
+static int stream_transport_start(stream_transport_t *stream, int start)
 {
 	if (stream)
-		stream->start = 1;
+		stream->start = start;
 
 	return 0;
 }
@@ -346,7 +346,7 @@ static void on_connect_success(void *ctx, void *param)
 	pj_assert(ctx);
 
 	file_stream_start(thiz->file);
-	stream_transport_start(thiz->send);
+	stream_transport_start(thiz->send, 1);
 }
 
 static void on_sock_disconnect(void *ctx, void *param)
@@ -355,6 +355,7 @@ static void on_sock_disconnect(void *ctx, void *param)
 
 	pj_assert(ctx);
 
+	stream_transport_start(thiz->send, 0);
 	//ice_client_disconnect();
 	PJ_LOG(4,("", " === on_sock_disconnect!!!"));
 }

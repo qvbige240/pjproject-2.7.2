@@ -334,10 +334,10 @@ pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id)
 		if (id == 1) {		/* server */
 			reachable = vpk_lan_server(lport+100, rport+100);
 			if (!reachable)
-				vpk_lan_client(rip, rport+100, lport+100);
+				vpk_lan_client(rip, rport+101, lport+101);
 		} else {
 			vpk_lan_client(rip, rport+100, lport+100);
-			reachable = vpk_lan_server(lport+100, rport+100);
+			reachable = vpk_lan_server(lport+101, rport+101);
 		}
 	} else { /** the same subnet **/
  		pj_uint16_t rbaseport;

@@ -503,6 +503,46 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 	}
 }
 
+/* General processing for media state. "mi" is the media index */
+static void on_call_generic_media_state(pjsua_call_info *ci, unsigned mi,
+										pj_bool_t *has_error)
+{
+	const char *status_name[] = {
+		"None",
+		"Active",
+		"Local hold",
+		"Remote hold",
+		"Error"
+	};
+
+	PJ_UNUSED_ARG(has_error);
+
+	pj_assert(ci->media[mi].status <= PJ_ARRAY_SIZE(status_name));
+	pj_assert(PJSUA_CALL_MEDIA_ERROR == 4);
+
+	PJ_LOG(4,(THIS_FILE, "============Call %d media %d [type=%s], status is %s",
+		ci->id, mi, pjmedia_type_name(ci->media[mi].type), status_name[ci->media[mi].status]));
+}
+static void on_call_media_state(pjsua_call_id call_id)
+{
+	pjsua_call_info call_info;
+	unsigned mi;
+	pj_bool_t has_error = PJ_FALSE;
+
+	pjsua_call_get_info(call_id, &call_info);
+
+	for (mi=0; mi<call_info.media_cnt; ++mi) {
+		on_call_generic_media_state(&call_info, mi, &has_error);
+	}
+
+	if (has_error) {
+		PJ_LOG(3,(THIS_FILE, "======Media failed"));
+		pj_str_t reason = pj_str("Media failed");
+		pjsua_call_hangup(call_id, 500, &reason, NULL);
+	}
+
+}
+
 /**
  * Handler when there is incoming call.
  */
@@ -688,6 +728,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 	default_config();
 	app_config.client = (socket_client*)PJ_POOL_ZALLOC_T(app_config.pool, socket_client);
 
+	//pj_log_set_level( 6 );
 	//ice_info_t info = {0};
 	//pj_strcpy(info.account, "102");
 	//pj_strcpy(info.passwd, "102");
@@ -703,7 +744,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 
 	/* Initialize application callbacks */
 	app_config.cfg.cb.on_call_state = &on_call_state;
-	//app_config.cfg.cb.on_call_media_state = &on_call_media_state;
+	app_config.cfg.cb.on_call_media_state = &on_call_media_state;
 	app_config.cfg.cb.on_incoming_call = &on_incoming_call;
 	//app_config.cfg.cb.on_call_tsx_state = &on_call_tsx_state;
 	//app_config.cfg.cb.on_dtmf_digit = &call_on_dtmf_callback;

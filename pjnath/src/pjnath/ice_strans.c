@@ -2030,6 +2030,7 @@ static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
 					comp->tcp_conn = PJ_TRUE;
 				} else {
 					PJ_LOG(4,(ice_st->obj_name, "TCP failed after %ds:%03d", msec/1000, msec%1000));
+					comp->tcp.sock = NULL;	/* it's important for sock destroy*/
 				}
 
 				(*cb.on_ice_complete)(ice_st, PJ_ICE_STRANS_OP_NEGOTIATION_TCP, status);

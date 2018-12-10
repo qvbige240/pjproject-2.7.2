@@ -2415,7 +2415,7 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
     if (lcand == NULL) {
 	unsigned cand_id;
 	pj_str_t foundation;
-
+#if 0
 	pj_ice_calc_foundation(ice->pool, &foundation, PJ_ICE_CAND_TYPE_PRFLX,
 			       &check->lcand->base_addr);
 
@@ -2439,6 +2439,9 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
 				      &check->lcand->base_addr,
 				      pj_sockaddr_get_len(&xaddr->sockaddr),
 				      &cand_id);
+#else
+		status = -1;
+#endif
 	if (status != PJ_SUCCESS) {
 	    check_set_state(ice, check, PJ_ICE_SESS_CHECK_STATE_FAILED, 
 			    status);
@@ -2778,11 +2781,29 @@ static void handle_incoming_check(pj_ice_sess *ice,
 	    return;
 	}
 
-	rcand = &ice->rcand[ice->rcand_cnt++];
-	rcand->comp_id = (pj_uint8_t)rcheck->comp_id;
-	rcand->type = PJ_ICE_CAND_TYPE_PRFLX;
-	rcand->prio = rcheck->priority;
-	pj_sockaddr_cp(&rcand->addr, &rcheck->src_addr);
+		unsigned j;
+		for (j=0; j<ice->rcand_cnt; ++j) {
+			if (ice->rcand[j].type == PJ_ICE_CAND_TYPE_RELAYED) {
+				LOG4((ice->obj_name, "===========rel_addr: %s",
+					pj_sockaddr_print(&ice->rcand[j].addr, raddr, sizeof(raddr), 0)));
+				if (pj_sockaddr_cmp(&rcheck->src_addr, &ice->rcand[j].addr)==0)
+				break;
+			}
+		}
+
+		if (j == ice->rcand_cnt) {
+			LOG4((ice->obj_name, "The remote candidate from the reflexive: %s:%d not equal to rel_addr",
+				pj_sockaddr_print(&rcheck->src_addr, raddr, sizeof(raddr), 0),
+				pj_sockaddr_get_port(&rcheck->src_addr)));
+			return;
+		}
+
+
+		rcand = &ice->rcand[ice->rcand_cnt++];
+		rcand->comp_id = (pj_uint8_t)rcheck->comp_id;
+		rcand->type = PJ_ICE_CAND_TYPE_PRFLX;
+		rcand->prio = rcheck->priority;
+		pj_sockaddr_cp(&rcand->addr, &rcheck->src_addr);
 
 		rcand->is_relay = 1;
 		LOG4((ice->obj_name, "=============== is relay set ============== "));

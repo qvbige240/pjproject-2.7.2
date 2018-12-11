@@ -707,6 +707,7 @@ static void ice_failed_nego_cb(void *user_data)
     pjsua_call *call = NULL;
     pjsip_dialog *dlg = NULL;
 
+	PJ_LOG(3,(THIS_FILE, "========== ice_failed_nego_cb: nego failed or tcp failed ==========\n"));
     if (acquire_call("ice_failed_nego_cb", call_id,
                      &call, &dlg) != PJ_SUCCESS)
     {
@@ -1571,7 +1572,7 @@ static void on_ice_complete(pjmedia_transport *tp,
 			if (call && pjsua_var.ua_cfg.cb.on_ice_negotiation_success)
 				(*pjsua_var.ua_cfg.cb.on_ice_negotiation_success)(call_med->tp, NULL);
 
-			int is_relay = ice_is_relay(call_med->tp_orig, 1);
+			int is_relay = ice_is_relay(call_med->tp_orig, &ca, 1);
 			if (is_relay == 0) {
 				PJ_LOG(4,(THIS_FILE, "====================================\n"));
 				PJ_LOG(4,(THIS_FILE, "========== start stun tcp ==========\n"));
@@ -1654,8 +1655,9 @@ static void on_ice_complete(pjmedia_transport *tp,
 			call_med->dir = PJMEDIA_DIR_NONE;
 			if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
 				/* Defer the callback to a timer */
-				pjsua_schedule_timer2(&ice_failed_nego_cb,
-					(void*)(pj_ssize_t)call->index, 1);
+				pjsua_schedule_timer2(&ice_failed_nego_cb, (void*)(pj_ssize_t)call->index, 1);
+				/* return before destroy ice */
+				//return;
 			}
 		} else {
 			if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)

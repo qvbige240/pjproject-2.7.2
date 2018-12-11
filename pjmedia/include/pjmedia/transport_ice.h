@@ -251,15 +251,18 @@ PJ_DECL(pj_status_t) pjmedia_ice_create3(pjmedia_endpt *endpt,
 // add...
 typedef struct cand_addr
 {
+	int					reflex;
 	pj_sockaddr			lcand_addr;
 	pj_sockaddr			lbase_addr;
+	pj_sockaddr			lflex_addr;
 	pj_sockaddr			rcand_addr;
 	pj_sockaddr			rbase_addr;
+	pj_sockaddr			rflex_addr;
 } cand_addr_t;
 
 int cand_address_get(pjmedia_transport *tp, cand_addr_t* ca, unsigned id);
 
-int ice_is_relay(pjmedia_transport *tp, unsigned id);
+int ice_is_relay(pjmedia_transport *tp, cand_addr_t* ca, unsigned id);
 
 pj_status_t pjmedia_ice_tcp(pjmedia_transport *tp, cand_addr_t *ca, unsigned id);
 

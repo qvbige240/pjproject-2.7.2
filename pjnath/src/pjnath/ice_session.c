@@ -2208,6 +2208,44 @@ static pj_status_t on_stun_send_msg(pj_stun_session *sess,
 }
 
 
+/* Check if IP is private IP address */
+static pj_bool_t is_private_ip(const pj_str_t *addr)
+{
+	const pj_str_t private_net[] = 
+	{
+		{ "10.", 3 },
+		{ "127.", 4 },
+		{ "172.16.", 7 }, { "172.17.", 7 }, { "172.18.", 7 }, { "172.19.", 7 },
+		{ "172.20.", 7 }, { "172.21.", 7 }, { "172.22.", 7 }, { "172.23.", 7 },
+		{ "172.24.", 7 }, { "172.25.", 7 }, { "172.26.", 7 }, { "172.27.", 7 },
+		{ "172.28.", 7 }, { "172.29.", 7 }, { "172.30.", 7 }, { "172.31.", 7 },
+		{ "192.168.", 8 }
+	};
+	unsigned i;
+
+	for (i=0; i<PJ_ARRAY_SIZE(private_net); ++i) {
+		if (pj_strncmp(addr, &private_net[i], private_net[i].slen)==0)
+			return PJ_TRUE;
+	}
+
+	return PJ_FALSE;
+}
+
+static pj_bool_t is_internal_ip(const pj_sockaddr_t *addr)
+{
+	pj_status_t status;
+	char txt[PJ_INET6_ADDRSTRLEN];
+	const pj_addr_hdr *h = (const pj_addr_hdr*)addr;
+
+	status = pj_inet_ntop(h->sa_family, pj_sockaddr_get_addr(addr), txt, sizeof(txt));
+	if (status != PJ_SUCCESS)
+		return PJ_FALSE;
+
+	pj_str_t str_addr = pj_str(txt);
+
+	return is_private_ip(&str_addr);
+}
+
 /* This callback is called when outgoing STUN request completed */
 static void on_stun_request_complete(pj_stun_session *stun_sess,
 				     pj_status_t status,
@@ -2398,8 +2436,7 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
 	 * mapped address for different base/local addresses.
 	 */
 	if (pj_sockaddr_cmp(&xaddr->sockaddr, &ice->lcand[i].addr) == 0 &&
-	    pj_sockaddr_cmp(&check->lcand->base_addr,
-			    &ice->lcand[i].base_addr) == 0)
+	    pj_sockaddr_cmp(&check->lcand->base_addr, &ice->lcand[i].base_addr) == 0)
 	{
 	    /* Match */
 	    lcand = &ice->lcand[i];
@@ -2415,7 +2452,9 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
     if (lcand == NULL) {
 	unsigned cand_id;
 	pj_str_t foundation;
-#if 0
+//#if 1
+		if (is_internal_ip(&xaddr->sockaddr)) {
+		
 	pj_ice_calc_foundation(ice->pool, &foundation, PJ_ICE_CAND_TYPE_PRFLX,
 			       &check->lcand->base_addr);
 
@@ -2439,9 +2478,19 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
 				      &check->lcand->base_addr,
 				      pj_sockaddr_get_len(&xaddr->sockaddr),
 				      &cand_id);
-#else
+		} else {
+
+//#else
+		char laddr[PJ_INET6_ADDRSTRLEN];
+		LOG4((ice->obj_name, "===========lcand == NULL"));
+		LOG4((ice->obj_name, "===========xaddr->sockaddr: %s",
+			pj_sockaddr_print(&xaddr->sockaddr, laddr, sizeof(laddr), 0)));
+		LOG4((ice->obj_name, "===========check->lcand->base_addr: %s",
+			pj_sockaddr_print(&check->lcand->base_addr, laddr, sizeof(laddr), 0)));
 		status = -1;
-#endif
+
+		}
+//#endif
 	if (status != PJ_SUCCESS) {
 	    check_set_state(ice, check, PJ_ICE_SESS_CHECK_STATE_FAILED, 
 			    status);
@@ -2756,6 +2805,7 @@ static void handle_incoming_check(pj_ice_sess *ice,
     pj_ice_sess_cand *lcand = NULL;
     pj_ice_sess_cand *rcand;
     unsigned i;
+	pj_uint8_t is_relay = 0;
 
     comp = find_comp(ice, rcheck->comp_id);
 
@@ -2781,13 +2831,25 @@ static void handle_incoming_check(pj_ice_sess *ice,
 	    return;
 	}
 
+		// added by qing.zou
 		unsigned j;
 		for (j=0; j<ice->rcand_cnt; ++j) {
 			if (ice->rcand[j].type == PJ_ICE_CAND_TYPE_RELAYED) {
 				LOG4((ice->obj_name, "===========rel_addr: %s",
 					pj_sockaddr_print(&ice->rcand[j].addr, raddr, sizeof(raddr), 0)));
-				if (pj_sockaddr_cmp(&rcheck->src_addr, &ice->rcand[j].addr)==0)
-				break;
+
+				if (pj_sockaddr_cmp(&rcheck->src_addr, &ice->rcand[j].addr)==0) {
+					is_relay = 1;
+					break;
+				}
+
+				if (is_internal_ip(&rcheck->src_addr)) {
+					LOG4((ice->obj_name, "===========is_internal_ip"));
+					is_relay = 0;
+					break;
+				}
+				//... 172.20.25.40 ? is relay
+				//LOG4((ice->obj_name, "not out j= %d===========is_internal_ip", j));
 			}
 		}
 
@@ -2805,8 +2867,8 @@ static void handle_incoming_check(pj_ice_sess *ice,
 		rcand->prio = rcheck->priority;
 		pj_sockaddr_cp(&rcand->addr, &rcheck->src_addr);
 
-		rcand->is_relay = 1;
-		LOG4((ice->obj_name, "=============== is relay set ============== "));
+		rcand->is_relay = is_relay;
+		LOG4((ice->obj_name, "=============== is relay set[%d] ============== ", is_relay));
 
 		/* Foundation is random, unique from other foundation */
 		rcand->foundation.ptr = (char*) pj_pool_alloc(ice->pool, 36);

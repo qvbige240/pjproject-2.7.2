@@ -2479,7 +2479,7 @@ static void on_stun_request_complete(pj_stun_session *stun_sess,
 				      pj_sockaddr_get_len(&xaddr->sockaddr),
 				      &cand_id);
 		} else {
-
+			/* Don't add new peer reflexive candidate if external ip, relay instead of it */
 //#else
 		char laddr[PJ_INET6_ADDRSTRLEN];
 		LOG4((ice->obj_name, "===========lcand == NULL"));
@@ -2834,6 +2834,9 @@ static void handle_incoming_check(pj_ice_sess *ice,
 		// added by qing.zou
 		unsigned j;
 		for (j=0; j<ice->rcand_cnt; ++j) {
+			/* Don't add new peer reflexive candidate if ip is not relay,
+			 * relay instead of external p2p, except internal p2p
+			 */
 			if (ice->rcand[j].type == PJ_ICE_CAND_TYPE_RELAYED) {
 				LOG4((ice->obj_name, "===========rel_addr: %s",
 					pj_sockaddr_print(&ice->rcand[j].addr, raddr, sizeof(raddr), 0)));

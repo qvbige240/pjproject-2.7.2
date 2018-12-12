@@ -706,14 +706,14 @@ PJ_DEF(pj_status_t) pj_stun_tcp_sock_create( pj_stun_config *stun_cfg,
 			&activesock_cb, stcp_sock,
 			&stcp_sock->active_sock);
 		if (status != PJ_SUCCESS) {
-			PJ_LOG(4, (stcp_sock->pool->obj_name, "=====11000000000 %d", status));
+			PJ_LOG(4, (stcp_sock->pool->obj_name, "=====pj_activesock_create error %d", status));
 			goto on_error;
 		}
 
 		PJ_ASSERT_RETURN(dst_addr, PJ_EINVAL);
 
-		PJ_LOG(4, (stcp_sock->pool->obj_name, "Connecting to %s", 
-			pj_sockaddr_print(dst_addr, addrtxt, sizeof(addrtxt), 3)));
+		PJ_LOG(4, (stcp_sock->pool->obj_name, "[%d] Connecting to %s", 
+			lport, pj_sockaddr_print(dst_addr, addrtxt, sizeof(addrtxt), 3)));
 
 
 		///* Start asynchronous read operations */

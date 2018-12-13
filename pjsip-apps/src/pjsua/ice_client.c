@@ -312,6 +312,8 @@ static pj_status_t set_args(ice_info_t *param)
 	sprintf(id_tmp, "sip:%s@%s", info->account, info->server);
 	sprintf(turn_tmp, "%s:%s", info->turn, info->turn_port);
 	sprintf(url_tmp, "sip:%s", info->server);
+	//sprintf(url_tmp, "sip:%s", "p2ptest.91carnet.com");
+	//sprintf(url_tmp, "sip:%s", "115.182.105.80");
 	//printf("======id_tmp: %s, turn_tmp: %s, url_tmp: %s\n", id_tmp, turn_tmp, url_tmp);
 
 	//char* id = "sip:102@172.17.13.8";

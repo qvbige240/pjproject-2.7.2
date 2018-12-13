@@ -76,6 +76,8 @@ pj_status_t file_create_stream(void *user_data, pj_pool_t *pool,
 int file_stream_start(tima_media_stream *stream);
 int file_destroy_stream(tima_media_stream* s);
 
+void file_entry(void);
+
 PJ_END_DECL
 
 #endif	/* MEDIA_DEV_IMPL_H */

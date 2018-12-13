@@ -137,23 +137,23 @@ int main_func(int argc, char *argv[])
 			return -1;
 		}
 	}
-#define SERVER_INTERNAL_NETWORK		"172.17.13.8"#define SERVER_EXTERNAL_NETWORK		"222.209.88.97"
-	pj_status_t status = PJ_TRUE;
-	
-	char *server = NULL;
-	if (external_network)
-		server = SERVER_EXTERNAL_NETWORK;
-	else
-		server = SERVER_INTERNAL_NETWORK;
-
-	//pj_bzero(&cfg, sizeof(cfg));
+	//pj_bzero(&cfg, sizeof(cfg));
 	//cfg.on_started = &on_app_started;
 	//cfg.on_stopped = &on_app_stopped;
 	//cfg.argc = argc;
 	//cfg.argv = argv;
 
+	pj_status_t status = PJ_TRUE;
+
 	setup_signal_handler();
 	setup_socket_signal();
+#if 0
+#define SERVER_INTERNAL_NETWORK		"172.17.13.8"#define SERVER_EXTERNAL_NETWORK		"222.209.88.97"
+	char *server = NULL;
+	if (external_network)
+		server = SERVER_EXTERNAL_NETWORK;
+	else
+		server = SERVER_INTERNAL_NETWORK;
 
 	char remote_uri[128] = {0};
 	ice_info_t info = {0};
@@ -180,6 +180,47 @@ int main_func(int argc, char *argv[])
 		strcpy(info.password, "password2");
 		sprintf(remote_uri, "sip:101@%s", info.server);
 	}
+#else
+#define SERVER_INTERNAL_NETWORK		"172.20.25.40"
+//#define SERVER_EXTERNAL_NETWORK		"115.182.105.80"
+#define SERVER_EXTERNAL_NETWORK		"p2ptest.91carnet.com"
+//#define SERVER_EXTERNAL_NETWORK		"91carnet.com"
+	char *server = NULL;
+	if (external_network)
+		server = SERVER_EXTERNAL_NETWORK;
+	else
+		server = SERVER_INTERNAL_NETWORK;
+
+	char remote_uri[128] = {0};
+	ice_info_t info = {0};
+	if (client == 1) {
+		strcpy(info.account, "timaA");
+		strcpy(info.passwd, "timaA");
+		strcpy(info.server, server);
+		//strcpy(info.realm, "115.182.105.80");
+		strcpy(info.realm, "91carnet.com");
+		//strcpy(info.realm, "172.20.25.40");
+
+		strcpy(info.turn, server);
+		strcpy(info.turn_port, "3488");
+		strcpy(info.username, "timaA");
+		strcpy(info.password, "timaA");
+		sprintf(remote_uri, "sip:timaB@%s", info.server);
+	} else {
+		strcpy(info.account, "timaB");
+		strcpy(info.passwd, "timaB");
+		strcpy(info.server, server);
+		//strcpy(info.realm, "115.182.105.80");
+		strcpy(info.realm, "91carnet.com");
+		//strcpy(info.realm, "172.20.25.40");
+
+		strcpy(info.turn, server);
+		strcpy(info.turn_port, "3488");
+		strcpy(info.username, "timaB");
+		strcpy(info.password, "timaB");
+		sprintf(remote_uri, "sip:timaA@%s", info.server);
+	}
+#endif
 
 	printf("======remote_uri: %s, server: %s\n", remote_uri, info.server);
 	ice_client_init(&info);

@@ -16,9 +16,10 @@ export BUILD_PATH=$BUILD_ROOT_PATH
 
 rm -rf $BUILD_PATH
 mkdir -p $BUILD_PATH
-if [ ! -d ${FINAL_PATH} ]; then
-    mkdir ${FINAL_PATH}
+if [ -d ${FINAL_PATH} ]; then
+    rm -rf ${FINAL_PATH}
 fi
+mkdir ${FINAL_PATH}
 
 if true;then
 # Build Environment

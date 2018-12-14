@@ -6323,6 +6323,14 @@ if test "$enable_sound" = "no"; then
   true;
 else
 
+    case $target in 
+        *android*)
+            ;;
+        *)
+            LIBS="-lgcc_s -lc $LIBS"
+            ;;
+    esac
+
  case $target in
   *)
 	ac_pjmedia_snd=null

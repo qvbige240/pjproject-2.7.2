@@ -2345,12 +2345,11 @@ PJ_DEF(pj_status_t) pjsua_call_hangup(pjsua_call_id call_id,
 
 
     if (call_id<0 || call_id>=(int)pjsua_var.ua_cfg.max_calls) {
-	PJ_LOG(1,(THIS_FILE, "pjsua_call_hangup(): invalid call id %d",
-			     call_id));
+		PJ_LOG(1,(THIS_FILE, "pjsua_call_hangup(): invalid call id %d", call_id));
+		return -1;
     }
 
-    PJ_ASSERT_RETURN(call_id>=0 && call_id<(int)pjsua_var.ua_cfg.max_calls,
-		     PJ_EINVAL);
+	PJ_ASSERT_RETURN(call_id>=0 && call_id<(int)pjsua_var.ua_cfg.max_calls, PJ_EINVAL);
 
     PJ_LOG(4,(THIS_FILE, "Call %d hanging up: code=%d..", call_id, code));
     pj_log_push_indent();

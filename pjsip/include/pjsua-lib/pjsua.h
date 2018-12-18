@@ -774,6 +774,12 @@ typedef struct pjsua_call_setting
 
 } pjsua_call_setting;
 
+typedef struct pjsua_callback_param
+{
+	pjsua_call_id	call_id;
+	int				status;
+
+} pjsua_callback_param;
 
 /**
  * This structure describes application callback to receive various event
@@ -1444,6 +1450,8 @@ typedef struct pjsua_callback
 	void (*on_ice_negotiation_success)(void *ctx, void *param);
 
 	void (*on_ice_connection_success)(void *ctx, void *param);
+
+	void (*on_ice_connection_failed)(void *ctx, void *param);
 
 	void (*on_ice_socket_disconnect)(void *ctx, void *param);
 
@@ -4387,7 +4395,16 @@ typedef enum pjsua_call_media_status
     /**
      * The media has reported error (e.g. ICE negotiation)
      */
-    PJSUA_CALL_MEDIA_ERROR
+	 PJSUA_CALL_MEDIA_ERROR,
+
+	 /* STUN binding request failed: STUN transaction has timed out(PJNATH_ESTUNTIMEDOUT) */
+	 PJSUA_CALL_MEDIA_ERROR1,
+
+	 /* tcp port bind failed. */
+	 PJSUA_CALL_MEDIA_ERROR2,
+
+	 /* tcp punch failed. */
+	 PJSUA_CALL_MEDIA_ERROR3,
 
 } pjsua_call_media_status;
 

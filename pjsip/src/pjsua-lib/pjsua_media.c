@@ -700,20 +700,42 @@ static void ice_init_complete_cb(void *user_data)
     }
 }
 
+static void ice_connection_failed(void *user_data, pjsua_call_media_status status)
+{
+	pjsua_call_media *call_med = (pjsua_call_media*)user_data;
+	pjsua_call *call = call_med->call;
+
+	pjsua_callback_param param = {0};
+	param.call_id = call->index;
+	param.status = status;		//call_med->state;
+	if (call && pjsua_var.ua_cfg.cb.on_ice_connection_failed)
+		(*pjsua_var.ua_cfg.cb.on_ice_connection_failed)(call_med->tp, (void*)&param);
+}
+
 /* Deferred callback to notify ICE negotiation failure */
 static void ice_failed_nego_cb(void *user_data)
 {
-    int call_id = (int)(pj_ssize_t)user_data;
-    pjsua_call *call = NULL;
-    pjsip_dialog *dlg = NULL;
+	//int call_id = (int)(pj_ssize_t)user_data;
+	int call_id = -1;
+	pjsua_call *call = NULL;
+	pjsip_dialog *dlg = NULL;
 
-	PJ_LOG(3,(THIS_FILE, "========== ice_failed_nego_cb: nego failed or tcp failed ==========\n"));
-    if (acquire_call("ice_failed_nego_cb", call_id,
-                     &call, &dlg) != PJ_SUCCESS)
-    {
-	/* Call have been terminated */
-	return;
-    }
+	pjsua_call_media *call_med = (pjsua_call_media*)user_data;
+	if (!call_med)
+		return;
+
+	call = call_med->call;
+	call_id = call->index;
+
+	PJ_LOG(3,(THIS_FILE, "========== ice_failed_nego_cb[id=%d]: nego failed or tcp failed ==========\n", call_id));
+
+	ice_connection_failed(user_data, call_med->state);
+
+	if (acquire_call("ice_failed_nego_cb", call_id, &call, &dlg) != PJ_SUCCESS)
+	{
+		/* Call have been terminated */
+		return;
+	}
 
     pjsua_var.ua_cfg.cb.on_call_media_state(call_id);
 
@@ -1521,6 +1543,7 @@ static void on_ice_complete(pjmedia_transport *tp,
 {
     pjsua_call_media *call_med = (pjsua_call_media*)tp->user_data;
     pjsua_call *call;
+	pj_status_t status;
 
     if (!call_med)
 	return;
@@ -1578,11 +1601,14 @@ static void on_ice_complete(pjmedia_transport *tp,
 				PJ_LOG(4,(THIS_FILE, "========== start stun tcp ==========\n"));
 				//pjmedia_ice_tcp(call_med->tp_orig, &ca, 0);
 				if (pjsua_var.tcp_server) {
-					pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
+					status = pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
 				} else {
-					pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
+					status = pjmedia_ice_tcp(call_med->tp_orig, &ca, pjsua_var.tcp_server);
 				}
 				PJ_LOG(4,(THIS_FILE, "========== end stun tcp ==========\n"));
+				if (status != PJ_SUCCESS)
+					ice_connection_failed((void*)call_med, PJSUA_CALL_MEDIA_ERROR2);
+
 				return;
 			} else {
 				PJ_LOG(4,(THIS_FILE, "============ is relay ============\n"));
@@ -1623,8 +1649,7 @@ static void on_ice_complete(pjmedia_transport *tp,
 			call_med->dir = PJMEDIA_DIR_NONE;
 			if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
 				/* Defer the callback to a timer */
-				pjsua_schedule_timer2(&ice_failed_nego_cb,
-					(void*)(pj_ssize_t)call->index, 1);
+				pjsua_schedule_timer2(&ice_failed_nego_cb, (void*)call_med, 1);
 			}
 		}
 		/* Check if default ICE transport address is changed */
@@ -1646,20 +1671,23 @@ static void on_ice_complete(pjmedia_transport *tp,
 
 				PJ_LOG(4,(THIS_FILE, "========== end stun tcp ==========\n"));
 
-				if (ret == PJ_SUCCESS)
+				if (ret != PJ_SUCCESS)
+					ice_connection_failed((void*)call_med, PJSUA_CALL_MEDIA_ERROR2);
+				else
 					break;
+			} else {
+				call_med->state = PJSUA_CALL_MEDIA_ERROR3;
+				call_med->dir = PJMEDIA_DIR_NONE;
+				if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
+					/* Defer the callback to a timer */
+					pjsua_schedule_timer2(&ice_failed_nego_cb, (void*)call_med, 1);
+					/* return before destroy ice */
+					//return;
+				}
 			}
 
-
-			call_med->state = PJSUA_CALL_MEDIA_ERROR;
-			call_med->dir = PJMEDIA_DIR_NONE;
-			if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
-				/* Defer the callback to a timer */
-				pjsua_schedule_timer2(&ice_failed_nego_cb, (void*)(pj_ssize_t)call->index, 1);
-				/* return before destroy ice */
-				//return;
-			}
 		} else {
+			reconn_cnt = 0;
 			if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)
 				(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, NULL);
 
@@ -2401,15 +2429,14 @@ static void on_srtp_nego_complete(pjmedia_transport *tp,
 		 "Call %d: Media %d: SRTP negotiation completes",
 	         call->index, call_med->idx));
 
-    if (result != PJ_SUCCESS) {
-	call_med->state = PJSUA_CALL_MEDIA_ERROR;
-	call_med->dir = PJMEDIA_DIR_NONE;
-	if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
-	    /* Defer the callback to a timer */
-	    pjsua_schedule_timer2(&ice_failed_nego_cb,
-				  (void*)(pj_ssize_t)call->index, 1);
+	if (result != PJ_SUCCESS) {
+		call_med->state = PJSUA_CALL_MEDIA_ERROR;
+		call_med->dir = PJMEDIA_DIR_NONE;
+		if (call && pjsua_var.ua_cfg.cb.on_call_media_state) {
+			/* Defer the callback to a timer */
+			pjsua_schedule_timer2(&ice_failed_nego_cb, (void*)call_med, 1);
+		}
 	}
-    }
 }
 
 

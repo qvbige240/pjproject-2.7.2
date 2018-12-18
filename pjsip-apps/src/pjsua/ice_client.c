@@ -514,7 +514,10 @@ static void on_call_generic_media_state(pjsua_call_info *ci, unsigned mi,
 		"Active",
 		"Local hold",
 		"Remote hold",
-		"Error"
+		"Error",
+		"Error1(STUN)",
+		"Error2(PORT)",
+		"Error3(PUNCH)"
 	};
 
 	PJ_UNUSED_ARG(has_error);
@@ -524,6 +527,8 @@ static void on_call_generic_media_state(pjsua_call_info *ci, unsigned mi,
 
 	PJ_LOG(4,(THIS_FILE, "============Call %d media %d [type=%s], status is %s",
 		ci->id, mi, pjmedia_type_name(ci->media[mi].type), status_name[ci->media[mi].status]));
+	PJ_LOG(4,(THIS_FILE, "============Call %d prov_media %d [type=%s], status is %s",
+		ci->id, mi, pjmedia_type_name(ci->prov_media[mi].type), status_name[ci->prov_media[mi].status]));
 }
 static void on_call_media_state(pjsua_call_id call_id)
 {
@@ -619,6 +624,57 @@ static void on_ice_connection_success(void *tp, void *param)
 			client->cb.on_connect_success(client->ctx, NULL);
 		else
 			PJ_LOG(3, (THIS_FILE, "without register callback function: on_connect_success."));
+	} else {
+		PJ_LOG(3, (THIS_FILE, "null pointer error."));
+	}
+}
+
+/*
+ * ice connect failed callback.
+ */
+static void on_ice_connection_failed(void *tp, void *param)
+{
+	const char *status_name[] = {
+		"None",
+		"Active",
+		"Local hold",
+		"Remote hold",
+		"Error",
+		"Error1(STUN)",
+		"Error2(PORT)",
+		"Error3(PUNCH)"
+	};
+
+	socket_client *client = (socket_client *)app_config.client;
+	
+	pjsua_callback_param *p = (pjsua_callback_param *)param;
+	int state = p->status;
+	pjsua_call_id call_id = p->call_id;
+
+	PJ_LOG(3, (THIS_FILE, "=============================================="));
+	PJ_LOG(4, (THIS_FILE, "========ice connection failed: %s.", status_name[state]));
+	PJ_LOG(3, (THIS_FILE, "=============================================="));
+	if (state == PJSUA_CALL_MEDIA_ERROR) {
+		pj_str_t reason = pj_str("ICE failed NEGOTIATION");
+		pjsua_call_hangup(call_id, 500, &reason, NULL);
+	} else if (state == PJSUA_CALL_MEDIA_ERROR1) {
+		pj_str_t reason = pj_str("ICE STUN binding request failed");
+		pjsua_call_hangup(call_id, 480, &reason, NULL);
+	} else if (state == PJSUA_CALL_MEDIA_ERROR2) {
+		pj_str_t reason = pj_str("ICE failed tcp port bind");
+		pjsua_call_hangup(call_id, 490, &reason, NULL);
+	} else if (state == PJSUA_CALL_MEDIA_ERROR3) {
+		pj_str_t reason = pj_str("ICE failed tcp connect");
+		pjsua_call_hangup(call_id, 491, &reason, NULL);
+	}
+
+	if (tp && client) {
+		//client->tp = tp;
+		//client->connected = 0;
+		//if (client->cb.on_connect_success)
+		//	client->cb.on_connect_success(client->ctx, NULL);
+		//else
+		//	PJ_LOG(3, (THIS_FILE, "without register callback function: on_ice_connection_failed."));
 	} else {
 		PJ_LOG(3, (THIS_FILE, "null pointer error."));
 	}
@@ -771,6 +827,7 @@ pj_status_t ice_client_init(ice_info_t *info)
 
 	app_config.cfg.cb.on_ice_negotiation_success = &on_ice_negotiation_success;
 	app_config.cfg.cb.on_ice_connection_success = &on_ice_connection_success;
+	app_config.cfg.cb.on_ice_connection_failed = &on_ice_connection_failed;	
 	app_config.cfg.cb.on_ice_socket_disconnect = &on_ice_socket_disconnect;
 	app_config.cfg.cb.on_ice_socket_writable = &on_ice_socket_writable;
 	app_config.cfg.cb.on_ice_receive_message = &on_ice_receive_message;

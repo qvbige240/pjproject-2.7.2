@@ -728,6 +728,7 @@ PJ_DEF(pj_status_t) pjsua_call_make_call(pjsua_acc_id acc_id,
 
     /* Clear call descriptor */
     reset_call(call_id);
+	pjsua_var.tcp_server = PJ_FALSE;
 
     call = &pjsua_var.calls[call_id];
 

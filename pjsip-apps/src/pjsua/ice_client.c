@@ -102,6 +102,7 @@ typedef struct socket_client
 
 	void				*tp;
 	int					connected;
+	int					successed;
 } socket_client;
 
 
@@ -416,11 +417,29 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 		//ring_stop(call_id);
 
 		socket_client *client = (socket_client *)app_config.client;
-		client->connected = 0;
-		if (client && client->cb.on_socket_clearing) {
-			client->cb.on_socket_clearing(client->ctx, NULL);
+		if (client->successed) {
+			client->successed = 0;
+			if (client->connected) {
+				client->connected = 0;
+				if (client->cb.on_sock_disconnect) {
+					client->cb.on_sock_disconnect(client->ctx, NULL);
+				} else {
+					PJ_LOG(3, (THIS_FILE, "without register callback: on_sock_disconnect."));
+				}
+			} else {
+				//client->connected = 0;
+				//if (client && client->cb.on_socket_clearing) {
+				//	client->cb.on_socket_clearing(client->ctx, NULL);
+				//} else {
+				//	PJ_LOG(3, (THIS_FILE, "on_socket_clearing: without register or null pointer."));
+				//}
+
+			}
+
 		} else {
-			PJ_LOG(3, (THIS_FILE, "on_socket_clearing: without register or null pointer."));
+			PJ_LOG(3, (THIS_FILE, "=============================================="));
+			PJ_LOG(4, (THIS_FILE, "========ice connection failed: remote init or stun binding request."));
+			PJ_LOG(3, (THIS_FILE, "=============================================="));
 		}
 
 		/* Cancel duration timer, if any */
@@ -604,9 +623,16 @@ static void on_nat_detect(const pj_stun_nat_detect_result *res)
 /*
  * ice negotiation success callback.
  */
-static void on_ice_negotiation_success(void *ctx, void *param)
+static void on_ice_negotiation_success(void *tp, void *param)
 {
 	PJ_LOG(4, (THIS_FILE, "========ice negotiation success."));
+	socket_client *client = (socket_client *)app_config.client;
+
+	if (tp && client) {
+		client->successed = 1;
+	} else {
+		PJ_LOG(3, (THIS_FILE, "null pointer error."));
+	}
 }
 
 /*
@@ -658,8 +684,9 @@ static void on_ice_connection_failed(void *tp, void *param)
 		pj_str_t reason = pj_str("ICE failed NEGOTIATION");
 		pjsua_call_hangup(call_id, 500, &reason, NULL);
 	} else if (state == PJSUA_CALL_MEDIA_ERROR1) {
-		pj_str_t reason = pj_str("ICE STUN binding request failed");
-		pjsua_call_hangup(call_id, 480, &reason, NULL);
+
+		//pj_str_t reason = pj_str("ICE STUN binding request failed");
+		//pjsua_call_hangup(call_id, 480, &reason, NULL);
 	} else if (state == PJSUA_CALL_MEDIA_ERROR2) {
 		pj_str_t reason = pj_str("ICE failed tcp port bind");
 		pjsua_call_hangup(call_id, 490, &reason, NULL);
@@ -1017,7 +1044,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 }
 
 //void ice_make_connect(iclient_callback *ctx, char *uri)
-void ice_make_connect(char *uri)
+pj_status_t ice_make_connect(char *uri)
 {
 	//socket_client *client = NULL;
 	pjsua_msg_data msg_data_;
@@ -1033,7 +1060,7 @@ void ice_make_connect(char *uri)
 
 	pjsua_msg_data_init(&msg_data_);
 	//TEST_MULTIPART(&msg_data_);
-	pjsua_call_make_call(current_acc, &tmp, &call_opt, NULL, &msg_data_, &current_call);
+	return pjsua_call_make_call(current_acc, &tmp, &call_opt, NULL, &msg_data_, &current_call);
 }
 
 pj_status_t ice_packet_send(const void *pkt, pj_size_t size)

@@ -187,7 +187,7 @@ pj_status_t ice_client_init(ice_info_t *info);
 
 pj_status_t ice_client_register(iclient_callback *ctx);
 
-void ice_make_connect(char *uri);
+pj_status_t ice_make_connect(char *uri);
 
 void ice_client_disconnect(void);
 

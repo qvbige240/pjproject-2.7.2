@@ -102,7 +102,7 @@ typedef struct socket_client
 
 	void				*tp;
 	int					connected;
-	int					successed;
+	int					nego_complete;
 } socket_client;
 
 
@@ -417,8 +417,8 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 		//ring_stop(call_id);
 
 		socket_client *client = (socket_client *)app_config.client;
-		if (client->successed) {
-			client->successed = 0;
+		if (client->nego_complete) {
+			client->nego_complete = 0;
 			if (client->connected) {
 				client->connected = 0;
 				if (client->cb.on_sock_disconnect) {
@@ -433,13 +433,17 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 				//} else {
 				//	PJ_LOG(3, (THIS_FILE, "on_socket_clearing: without register or null pointer."));
 				//}
-
 			}
 
 		} else {
 			PJ_LOG(3, (THIS_FILE, "=============================================="));
 			PJ_LOG(4, (THIS_FILE, "========ice connection failed: remote init or stun binding request."));
 			PJ_LOG(3, (THIS_FILE, "=============================================="));
+			if (client->cb.on_connect_failure) {
+				client->cb.on_connect_failure(client->ctx, NULL);
+			} else {
+				PJ_LOG(3, (THIS_FILE, "without register callback: on_connect_failure."));
+			}
 		}
 
 		/* Cancel duration timer, if any */
@@ -629,7 +633,7 @@ static void on_ice_negotiation_success(void *tp, void *param)
 	socket_client *client = (socket_client *)app_config.client;
 
 	if (tp && client) {
-		client->successed = 1;
+		client->nego_complete = 1;
 	} else {
 		PJ_LOG(3, (THIS_FILE, "null pointer error."));
 	}
@@ -681,6 +685,8 @@ static void on_ice_connection_failed(void *tp, void *param)
 	PJ_LOG(4, (THIS_FILE, "========ice connection failed: %s.", status_name[state]));
 	PJ_LOG(3, (THIS_FILE, "=============================================="));
 	if (state == PJSUA_CALL_MEDIA_ERROR) {
+		client->nego_complete = 1;
+
 		pj_str_t reason = pj_str("ICE failed NEGOTIATION");
 		pjsua_call_hangup(call_id, 500, &reason, NULL);
 	} else if (state == PJSUA_CALL_MEDIA_ERROR1) {
@@ -698,10 +704,10 @@ static void on_ice_connection_failed(void *tp, void *param)
 	if (tp && client) {
 		//client->tp = tp;
 		//client->connected = 0;
-		//if (client->cb.on_connect_success)
-		//	client->cb.on_connect_success(client->ctx, NULL);
-		//else
-		//	PJ_LOG(3, (THIS_FILE, "without register callback function: on_ice_connection_failed."));
+		if (client->cb.on_connect_failure)
+			client->cb.on_connect_failure(client->ctx, NULL);
+		else
+			PJ_LOG(3, (THIS_FILE, "without register callback: on_connect_failure."));
 	} else {
 		PJ_LOG(3, (THIS_FILE, "null pointer error."));
 	}
@@ -1033,6 +1039,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 
 	client->ctx = ctx;
 	client->cb.on_connect_success = ctx->on_connect_success;
+	client->cb.on_connect_failure = ctx->on_connect_failure;
 	client->cb.on_sock_disconnect = ctx->on_sock_disconnect;
 	client->cb.on_socket_clearing = ctx->on_socket_clearing;
 	client->cb.on_socket_writable = ctx->on_socket_writable;

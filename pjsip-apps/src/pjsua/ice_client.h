@@ -78,6 +78,8 @@ typedef struct iclient_callback
 {
 	void (*on_connect_success)(void *ctx, void *param);
 
+	void (*on_connect_failure)(void *ctx, void *param);
+
 	void (*on_sock_disconnect)(void *ctx, void *param);
 
 	void (*on_socket_clearing)(void *ctx, void *param);

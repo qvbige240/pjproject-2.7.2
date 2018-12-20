@@ -74,8 +74,18 @@ typedef struct ice_info_s
 	int		conn_type;
 } ice_info_t;
 
+
+typedef struct ice_client_param
+{
+	int			call_id;
+	int			status;
+
+} ice_client_param;
+
 typedef struct iclient_callback
 {
+	void (*on_register_status)(void *ctx, void *param);
+
 	void (*on_connect_success)(void *ctx, void *param);
 
 	void (*on_connect_failure)(void *ctx, void *param);

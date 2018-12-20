@@ -4,6 +4,7 @@
 #include "ice_client.h"
 #include "media_dev_impl.h"
 
+static void on_register_status(void *ctx, void *param);
 static void on_connect_success(void *ctx, void *param);
 static void on_connect_failure(void *ctx, void *param);
 static void on_receive_message(void *ctx, void *pkt, pj_ssize_t bytes_read);
@@ -259,6 +260,7 @@ vpk_stream_t* vpk_stream_create(pj_pool_t *pool)
 	vpk_stream_t* thiz = PJ_POOL_ZALLOC_T (pool, vpk_stream_t);
 
 	//iclient_callback op = {0};
+	thiz->op.on_register_status = on_register_status;
 	thiz->op.on_connect_success = on_connect_success;
 	thiz->op.on_connect_failure = on_connect_failure;
 	thiz->op.on_sock_disconnect = on_sock_disconnect;
@@ -340,6 +342,15 @@ void file_entry(void)
 	//ice_make_connect(&stream->op, uri);
 }
 
+
+static void on_register_status(void *ctx, void *param)
+{
+	vpk_stream_t *thiz = (vpk_stream_t *)ctx;
+	ice_client_param *p = (ice_client_param *)param;
+	pj_assert(ctx);
+
+	PJ_LOG(4,("", " === on_register_status[%d]: %d!!!", p->call_id, p->status));
+}
 
 static void on_connect_success(void *ctx, void *param)
 {

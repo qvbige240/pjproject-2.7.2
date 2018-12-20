@@ -607,8 +607,39 @@ static void on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id, pjsip_r
  */
 static void on_reg_state(pjsua_acc_id acc_id)
 {
-	PJ_UNUSED_ARG(acc_id);
+	//PJ_UNUSED_ARG(acc_id);
+	char buf[80];
+	pjsua_acc_info info;
 
+	pjsua_acc_get_info(acc_id, &info);
+
+	if (!info.has_registration) {
+		pj_ansi_snprintf(buf, sizeof(buf), "%.*s",
+			(int)info.status_text.slen,
+			info.status_text.ptr);
+
+	} else {
+		pj_ansi_snprintf(buf, sizeof(buf),
+			"%d/%.*s (expires=%d)",
+			info.status,
+			(int)info.status_text.slen,
+			info.status_text.ptr,
+			info.expires);
+
+	}
+
+	PJ_LOG(4, (THIS_FILE, "=============== %c[%2d] %.*s: %s ===============\n", 
+		(acc_id==current_acc?'*':' '), acc_id, (int)info.acc_uri.slen, info.acc_uri.ptr, buf));
+
+	socket_client *client = (socket_client *)app_config.client;
+	if (client->cb.on_register_status) {
+		ice_client_param param = {0};
+		param.call_id = acc_id;
+		param.status = info.status;
+		client->cb.on_register_status(client->ctx, (void*)&param);
+	} else {
+		PJ_LOG(3, (THIS_FILE, "without register callback: on_register_status."));
+	}
 	// Log already written.
 }
 
@@ -1038,6 +1069,7 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 	PJ_ASSERT_RETURN(ctx, PJ_EINVAL);
 
 	client->ctx = ctx;
+	client->cb.on_register_status = ctx->on_register_status;
 	client->cb.on_connect_success = ctx->on_connect_success;
 	client->cb.on_connect_failure = ctx->on_connect_failure;
 	client->cb.on_sock_disconnect = ctx->on_sock_disconnect;

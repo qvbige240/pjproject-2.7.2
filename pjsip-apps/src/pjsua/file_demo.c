@@ -349,7 +349,7 @@ static void on_register_status(void *ctx, void *param)
 	ice_client_param *p = (ice_client_param *)param;
 	pj_assert(ctx);
 
-	PJ_LOG(4,("", " === on_register_status[%d]: %d!!!", p->call_id, p->status));
+	PJ_LOG(4,("", " === on_register_status[%d]: %d!", p->call_id, p->status));
 }
 
 static void on_connect_success(void *ctx, void *param)

@@ -206,6 +206,17 @@ int main_func(int argc, char *argv[])
 		strcpy(info.username, "timaA");
 		strcpy(info.password, "timaA");
 		sprintf(remote_uri, "sip:timaB@%s", info.server);
+	} else if (client == 3) {
+		strcpy(info.account, "timaC");
+		strcpy(info.passwd, "timaC");
+		strcpy(info.server, server);
+		strcpy(info.realm, "91carnet.com");
+
+		strcpy(info.turn, server);
+		strcpy(info.turn_port, "3488");
+		strcpy(info.username, "timaC");
+		strcpy(info.password, "timaC");
+		sprintf(remote_uri, "sip:timaA@%s", info.server);
 	} else {
 		strcpy(info.account, "timaB");
 		strcpy(info.passwd, "timaB");

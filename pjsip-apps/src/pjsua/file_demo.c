@@ -313,10 +313,16 @@ void file_demo_destroy(vpk_stream_t *stream)
 }
 
 
+pj_pool_t			*pool;	
+vpk_stream_t*		stream;
+void file_exit(void)
+{
+	file_demo_destroy(stream);
+}
 void file_entry(void)
 {
 	pj_caching_pool		cache;	    /**< Global pool factory.		*/
-	pj_pool_t			*pool;	
+	//pj_pool_t			*pool;	
 
 	if (0) {
 		/* Init caching pool. */
@@ -331,7 +337,7 @@ void file_entry(void)
 		pool = ice_pool_create("demo", 200, 1000);
 	}
 
-	vpk_stream_t* stream = vpk_stream_create(pool);
+	stream = vpk_stream_create(pool);
 
 	//tima_media_stream *file_stream = stream->file;
 	file_create_stream(stream, pool, stream_transport_send, &stream->file);

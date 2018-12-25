@@ -104,6 +104,7 @@ typedef struct pjsua_app_config
 {
 	//sip_context_t		sip_ctx;
 	void				*client;
+	int					is_destroying;
 
 	pjsua_config	    cfg;
 	pjsua_logging_config    log_cfg;

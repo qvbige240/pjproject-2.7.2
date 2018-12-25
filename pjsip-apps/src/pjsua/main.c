@@ -101,6 +101,7 @@ static void setup_signal_handler(void) {}
 
 
 extern void file_entry(void);
+extern void file_exit(void);
 
 // ./bin -c 1 -n
 int main_func(int argc, char *argv[])
@@ -284,6 +285,8 @@ int main_func(int argc, char *argv[])
 			default:break;
 		}
 
+		if (ch == 'e')
+			break;
 		//while (ch != '\n') {
 		//	scanf("%c", &ch);
 		//}
@@ -294,6 +297,8 @@ int main_func(int argc, char *argv[])
 		//sleep(3);
 
 	}
+
+	file_exit();
 
 	//pj_pool_release(pool);
 	////pj_pool_safe_release(&pool);

@@ -426,8 +426,11 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 				client->nego_complete = 0;
 				if (client->connected) {
 					client->connected = 0;
+					ice_client_param param = {0};
+					param.call_id = call_id;
+					param.status = 0;
 					if (client->cb.on_sock_disconnect) {
-						client->cb.on_sock_disconnect(client->ctx, NULL);
+						client->cb.on_sock_disconnect(client->ctx, (void*)&param);
 					} else {
 						PJ_LOG(3, (THIS_FILE, "without register callback: on_sock_disconnect."));
 					}
@@ -695,9 +698,12 @@ static void on_ice_connection_success(void *tp, void *param)
 	PJ_LOG(4, (THIS_FILE, "========ice connection success."));
 	if (tp && client) {
 		client->tp = tp;
-		client->connected = 1;
+		client->connected = 1;		
+		ice_client_param param = {0};
+		param.call_id = current_call;
+		param.status = 0;
 		if (client->cb.on_connect_success)
-			client->cb.on_connect_success(client->ctx, NULL);
+			client->cb.on_connect_success(client->ctx, (void*)&param);
 		else
 			PJ_LOG(3, (THIS_FILE, "without register callback function: on_connect_success."));
 	} else {
@@ -780,8 +786,11 @@ static void on_ice_socket_disconnect(void *tp, void *param)
 	pjsua_call_hangup(current_call, 0, NULL, NULL);
 	if (tp && client) {
 		client->connected = 0;
+		ice_client_param param = {0};
+		param.call_id = current_call;
+		param.status = 0;
 		if (client->cb.on_sock_disconnect)
-			client->cb.on_sock_disconnect(client->ctx, NULL);
+			client->cb.on_sock_disconnect(client->ctx, (void*)&param);
 		else
 			PJ_LOG(3, (THIS_FILE, "without register callback function: on_sock_disconnect."));
 	} else {
@@ -799,10 +808,13 @@ static void on_ice_socket_writable(void *tp, void *param)
 
 	PJ_LOG(4, (THIS_FILE, "========ice socket writable."));
 	if (tp && client) {
+		ice_client_param param = {0};
+		param.call_id = current_call;
+		param.status = 0;
 		if (client->cb.on_socket_writable)
-			client->cb.on_socket_writable(client->ctx, NULL);
+			client->cb.on_socket_writable(client->ctx, (void*)&param);
 		else
-			PJ_LOG(3, (THIS_FILE, "without register callback function: on_socket_writable."));
+			PJ_LOG(3, (THIS_FILE, "without register callback: on_socket_writable."));
 	} else {
 		PJ_LOG(3, (THIS_FILE, "null pointer error."));
 	}

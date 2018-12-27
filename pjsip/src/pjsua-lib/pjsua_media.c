@@ -1592,8 +1592,12 @@ static void on_ice_complete(pjmedia_transport *tp,
 			PJ_LOG(4,(THIS_FILE, "ss====== local  addr: %s:%d, base: %s:%d", lip, lport, lbaseip, lbaseport));
 			PJ_LOG(4,(THIS_FILE, "ss======remote  addr: %s:%d, base: %s:%d\n", rip, rport, rbaseip, rbaseport));
 
-			if (call && pjsua_var.ua_cfg.cb.on_ice_negotiation_success)
-				(*pjsua_var.ua_cfg.cb.on_ice_negotiation_success)(call_med->tp, NULL);
+			if (call && pjsua_var.ua_cfg.cb.on_ice_negotiation_success) {
+				pjsua_callback_param param = {0};
+				param.call_id = call->index;
+				param.status = 0;
+				(*pjsua_var.ua_cfg.cb.on_ice_negotiation_success)(call_med->tp, (void*)&param);
+			}
 
 			int is_relay = ice_is_relay(call_med->tp_orig, &ca, 1);
 			if (is_relay == 0) {
@@ -1613,8 +1617,12 @@ static void on_ice_complete(pjmedia_transport *tp,
 			} else {
 				PJ_LOG(4,(THIS_FILE, "============ is relay ============\n"));
 
-				if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)
-					(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, NULL);
+				if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success) {
+					pjsua_callback_param param = {0};
+					param.call_id = call->index;
+					param.status = 0;
+					(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, (void*)&param);
+				}
 			}
 		
 #if 0
@@ -1688,8 +1696,12 @@ static void on_ice_complete(pjmedia_transport *tp,
 
 		} else {
 			reconn_cnt = 0;
-			if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success)
-				(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, NULL);
+			if (call && pjsua_var.ua_cfg.cb.on_ice_connection_success) {
+				pjsua_callback_param param = {0};
+				param.call_id = call->index;
+				param.status = 0;
+				(*pjsua_var.ua_cfg.cb.on_ice_connection_success)(call_med->tp, (void*)&param);
+			}
 
 		}
 		/* Check if default ICE transport address is changed */

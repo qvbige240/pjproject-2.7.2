@@ -22,7 +22,7 @@ struct file_stream
 	tima_put_packet		put_packet;
 };
 
-#define MAX_DATA_CHUNK_SIZE		1024
+#define MAX_DATA_CHUNK_SIZE		1500 //1024
 static int file_process_thread(void *args);
 //extern int stream_transport_nonblock(void* handler);
 //extern int stream_transport_send(void* handler, char* msg, int msg_size);
@@ -124,7 +124,9 @@ static int file_process_thread(void *args)
 	while(offset < file_size && !stream->is_quitting) {
 		memset(stream->buf, 0x00, stream->buf_size);
 		fseek(fp, offset, SEEK_SET);
-		result = fread(stream->buf, 1, stream->buf_size, fp);
+		unsigned tmp_size = 13 + pj_rand() % 1400;
+		result = fread(stream->buf, 1, tmp_size, fp);
+		//result = fread(stream->buf, 1, stream->buf_size, fp);
 		if (result < 0) {
 			printf("read file end!");
 			break;
@@ -133,7 +135,7 @@ static int file_process_thread(void *args)
 
 		//pj_mutex_lock(stream->mutex);
 		//printf("[%d]read to send: %d ret=%d, %p\n", cnt++, stream->buf_size, result, stream->buf);
-		printf("%05d ", cnt++);
+		printf("%d[%05d] ", tmp_size, cnt++);
 
 		if (stream->put_packet)
 			stream->put_packet(stream->user_data, stream->buf, result);

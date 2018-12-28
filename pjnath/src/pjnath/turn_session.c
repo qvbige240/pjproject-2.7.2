@@ -1163,6 +1163,14 @@ PJ_DEF(pj_status_t) pj_turn_session_on_rx_pkt(pj_turn_session *sess,
     /* Packet could be ChannelData or STUN message (response or
      * indication).
      */
+	 
+	if (sess == NULL) {
+		printf("\n\n\n============ turn sess == NULL ============\n");
+		PJ_LOG(4,( "", "============ turn sess == NULL ============"));
+		return PJ_EINVAL;
+	}
+		
+	PJ_ASSERT_RETURN(sess && pkt && pkt_len, PJ_EINVAL);
 
     /* Start locking the session */
     pj_grp_lock_acquire(sess->grp_lock);

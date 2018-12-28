@@ -121,6 +121,24 @@ static int file_process_thread(void *args)
 
 	int cnt = 0;
 
+#if 0	// mult-call test
+	char *hello = "hello world";
+	char buf_tmp[256] = {0};
+	while (!stream->is_quitting) {
+		//printf("%d[%05d] ", tmp_size, cnt++);
+		memset(buf_tmp, 0x00, sizeof(buf_tmp));
+		sprintf(buf_tmp, "%s %03d", hello, cnt++);
+
+		if (stream->put_packet)
+			stream->put_packet(stream->user_data, buf_tmp, strlen(buf_tmp)+1);
+
+		if (stream->is_quitting)
+			break;
+
+		pj_thread_sleep(3000);	// ms
+	}
+#else
+
 	while(offset < file_size && !stream->is_quitting) {
 		memset(stream->buf, 0x00, stream->buf_size);
 		fseek(fp, offset, SEEK_SET);
@@ -148,6 +166,7 @@ static int file_process_thread(void *args)
 
 		//pj_thread_sleep(100);	// ms
 	}
+#endif
 
 	printf("\n");
 

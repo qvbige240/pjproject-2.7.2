@@ -1984,6 +1984,12 @@ static pj_bool_t stun_tcp_on_data_sent(pj_stun_sock *tcp_sock,
 	pj_ice_strans *ice_st;
 
 	data = (sock_user_data*) pj_stun_sock_get_user_data(tcp_sock);
+	if (data == NULL) {
+		printf("\n\n============= stun_tcp_on_data_sent data == NULL ============= \n\n");
+		PJ_LOG(4,("", "============= stun_tcp_on_data_sent data == NULL ============="));
+		return -1;
+	}
+
 	comp = data->comp;
 	ice_st = comp->ice_st;
 	pj_ice_strans_cb cb = ice_st->cb;
@@ -2498,6 +2504,11 @@ static pj_bool_t tun_on_data_sent(pj_turn_sock *turn_sock,
 	pj_ice_strans *ice_st;
 
 	data = (sock_user_data*) pj_turn_sock_get_user_data(turn_sock);
+	if (data == NULL) {
+		printf("\n\n============= tun_on_data_sent data == NULL ============= \n\n");
+		PJ_LOG(4,("", "============= tun_on_data_sent data == NULL ============="));
+		return -1;
+	}
 	comp = data->comp;
 	ice_st = comp->ice_st;
 	pj_ice_strans_cb cb = ice_st->cb;

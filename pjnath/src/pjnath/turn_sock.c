@@ -681,6 +681,10 @@ static pj_bool_t on_data_sent(pj_activesock_t *asock,
 		return PJ_EINVALIDOP;
 	}
 
+	if (turn_sock->user_data == NULL) {
+		PJ_LOG(3,("", "============= turn_sock->user_data NULL ============="));
+	}
+
 	if (turn_sock->cb.on_data_sent) {
 		pj_bool_t ret;
 
@@ -972,6 +976,7 @@ static void turn_on_state(pj_turn_session *sess,
     if (new_state >= PJ_TURN_STATE_DESTROYING && turn_sock->sess) {
 	pj_time_val delay = {0, 0};
 
+printf("\n\n===================turn_sock->sess = NULL============ \n\n");
 	turn_sock->sess = NULL;
 	pj_turn_session_set_user_data(sess, NULL);
 

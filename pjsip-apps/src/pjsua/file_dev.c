@@ -153,7 +153,7 @@ static int file_process_thread(void *args)
 
 		//pj_mutex_lock(stream->mutex);
 		//printf("[%d]read to send: %d ret=%d, %p\n", cnt++, stream->buf_size, result, stream->buf);
-		printf("%d[%05d] ", tmp_size, cnt++);
+		printf("%d[%05d] ", result, cnt++);
 
 		if (stream->put_packet)
 			stream->put_packet(stream->user_data, stream->buf, result);

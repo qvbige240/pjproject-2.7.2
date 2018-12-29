@@ -450,7 +450,7 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
 
 				ice_client_param param = {0};
 				param.call_id = call_id;
-				param.status = 490;
+				param.status = call_info.last_status;
 				if (client->cb.on_connect_failure) {
 					client->cb.on_connect_failure(client->ctx, (void*)&param);
 				} else {

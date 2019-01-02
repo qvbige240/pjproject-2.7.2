@@ -2515,6 +2515,9 @@ static pj_bool_t tun_on_data_sent(pj_turn_sock *turn_sock,
 
 	pj_grp_lock_add_ref(ice_st->grp_lock);
 
+	/** if writable and keep alive need re-send **/
+	ice_keep_alive_resend(ice_st->ice, 0, 1);
+
 	if (cb.on_data_writable)
 		cb.on_data_writable(ice_st, comp->comp_id);
 

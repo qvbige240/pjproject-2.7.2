@@ -1201,6 +1201,33 @@ static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
     pj_grp_lock_release(ice->grp_lock);
 }
 
+void ice_keep_alive_resend(pj_ice_sess *ice, int second, int need_lock)
+{
+	if (!ice->resend_ka)
+		return;
+
+	if (need_lock)
+		pj_grp_lock_acquire(ice->grp_lock);
+
+	/* Stop our timer if it's active */
+	if (ice->timer.id == TIMER_KEEP_ALIVE) {
+		pj_timer_heap_cancel_if_active(ice->stun_cfg.timer_heap, &ice->timer, TIMER_NONE);
+	}
+
+	if (ice->timer.id == TIMER_NONE) {
+		pj_time_val delay = { second, 0 };
+
+		pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
+			&ice->timer, &delay, TIMER_KEEP_ALIVE, ice->grp_lock);
+
+	} else {
+		PJ_LOG(4,( "", "============ ice_keep_alive_resend failed, timer id: %d ============", ice->timer.id));
+	}
+
+	if (need_lock)
+		pj_grp_lock_release(ice->grp_lock);
+}
+
 /* Send keep-alive */
 static void ice_keep_alive(pj_ice_sess *ice, pj_bool_t send_now)
 {
@@ -1243,8 +1270,17 @@ static void ice_keep_alive(pj_ice_sess *ice, pj_bool_t send_now)
 					  &the_check->rcand->addr, 
 					  addr_len, tdata);
 
-	/* Restore FINGERPRINT usage */
-	pj_stun_session_use_fingerprint(comp->stun_sess, saved);
+		/* Restore FINGERPRINT usage */
+		pj_stun_session_use_fingerprint(comp->stun_sess, saved);
+
+		if (status != PJ_SUCCESS) {
+			printf("\n\n\n============ ice_keep_alive send msg failed ============\n");
+			PJ_LOG(4,( "", "============ ice_keep_alive send msg failed, time id: %d ============", ice->timer.id));
+			ice->resend_ka = 1;
+			ice_keep_alive_resend(ice, 1, 0);
+			return ;
+		}
+		ice->resend_ka = 0;
 
 done:
 	ice->comp_ka = (ice->comp_ka + 1) % ice->comp_cnt;
@@ -1264,6 +1300,7 @@ done:
 	                                  ice->grp_lock);
 
     } else {
+		printf("\n\n\n============ Not expected any timer active ============\n");
 	pj_assert(!"Not expected any timer active");
     }
 }

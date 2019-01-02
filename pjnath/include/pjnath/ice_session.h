@@ -647,6 +647,8 @@ struct pj_ice_sess
 	pj_timer_entry	 beat_timer;			 /**< ICE heart-beat timer.	    */
 	int		 		 beat_counter;
 
+	unsigned		 resend_ka;			/** flag that keep alive need re-send **/
+
 
     /* STUN credentials */
     pj_str_t		 tx_ufrag;		    /**< Remote ufrag.	    */
@@ -936,6 +938,17 @@ pj_ice_sess_create_check_list(pj_ice_sess *ice,
  */
 PJ_DECL(pj_status_t) pj_ice_sess_start_check(pj_ice_sess *ice);
 
+/**
+ * qing.zou added
+ * Start if is writable. Because there is already pending write in write_op,
+ * we could not send the packet directly, so we can send until writable
+ *
+ * @param ice		The ICE session instance.
+ * @param second	Execute by timer delay second.
+ * @param need_lock	Use lock.
+ *
+ */
+void ice_keep_alive_resend(pj_ice_sess *ice, int second, int need_lock);
 
 /**
  * Send data using this ICE session. If ICE checks have not produced a

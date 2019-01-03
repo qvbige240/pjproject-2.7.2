@@ -1135,7 +1135,7 @@ static pj_status_t prune_checklist(pj_ice_sess *ice,
     return PJ_SUCCESS;
 }
 
-#define ICE_HEART_BEAT_TICK		3
+#define ICE_HEART_BEAT_TICK		5
 
 /* Timer callback */
 static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
@@ -1312,14 +1312,18 @@ done:
 /* Proc heart beat */
 static void ice_heart_beat(pj_ice_sess *ice, int val)
 {
-	pj_time_val delay = { ICE_HEART_BEAT_TICK, 0 };
+	int timsec = ICE_HEART_BEAT_TICK;
 
 	//delay.msec = 5000;
 	//pj_time_val_normalize(&delay);
 
+	if (ice->beat_counter >= 15) {
+		val = 1;
+		timsec = 1;
+		LOG4((ice->obj_name, "======beat_counter: %d", ice->beat_counter));
+	}
+
 	ice->beat_counter += val;
-	if (ice->beat_counter > 15)
-		LOG4((ice->obj_name, "====beat_counter: %d", ice->beat_counter));
 
 	if (ice->beat_counter >= 25)
 	{
@@ -1327,6 +1331,7 @@ static void ice_heart_beat(pj_ice_sess *ice, int val)
 		if (ice->cb.on_ice_disconnect)
 			(*ice->cb.on_ice_disconnect)(ice, PJ_TRUE);
 	} else {
+		pj_time_val delay = { timsec, 0 };
 		pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
 			&ice->beat_timer, &delay, TIMER_HEART_BEAT, ice->grp_lock);
 	}

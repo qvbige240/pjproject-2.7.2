@@ -467,7 +467,7 @@ static int test_socket_create(int lport)
 		perror("bind local");  
 		exit(1);  
 	} else {  
-		LOG_D("local bind OK\n");  
+		LOG_D("local %d bind OK\n", lport);  
 	} 
 
 	return fd;
@@ -596,6 +596,7 @@ int vpk_lan_client(const char* ip, int port, int lport)
 	remote_addr.sin_family = AF_INET;
 	remote_addr.sin_port = htons(port);
 	remote_addr.sin_addr.s_addr = inet_addr(ip);
+	LOG_D("client[%d] send to %s:%d\n", client, ip, port);
 	usleep(300000);
 	udp_send(client, (vpk_sockaddr*)&remote_addr, msg, strlen(msg));
 	usleep(200000);

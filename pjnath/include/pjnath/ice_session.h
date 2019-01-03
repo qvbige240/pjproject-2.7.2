@@ -648,6 +648,7 @@ struct pj_ice_sess
 	int		 		 beat_counter;
 
 	unsigned		 resend_ka;			/** flag that keep alive need re-send **/
+	unsigned		 lan_mode;			/** if LAN mode and keep alive have been sent more frequently **/
 
 
     /* STUN credentials */

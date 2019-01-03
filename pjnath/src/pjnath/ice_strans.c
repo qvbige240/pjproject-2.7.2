@@ -1845,6 +1845,11 @@ static pj_status_t ice_tx_pkt(pj_ice_sess *ice,
     	    dest_addr_len = dst_addr_len;
     	}
 
+
+		///* Send ice keep alive with tcp instead of UDP */
+		//if (comp->tcp_conn) 
+		//	status = pj_stun_sock_send(comp->tcp.sock, NULL, pkt, (unsigned)size, 0);
+		//else
 		status = pj_stun_sock_sendto(comp->stun[tp_idx].sock, NULL,
 			pkt, (unsigned)size, 0, dest_addr, dest_addr_len);
 	} else {
@@ -2034,6 +2039,7 @@ static pj_bool_t stun_tcp_on_status(pj_stun_sock *tcp_sock,
 				if (status == PJ_SUCCESS) {
 					PJ_LOG(4,(ice_st->obj_name, "TCP success after %ds:%03d", msec/1000, msec%1000));
 					comp->tcp_conn = PJ_TRUE;
+					ice_st->ice->lan_mode = 1;	/* flag LAN mode for keep alive */
 				} else {
 					PJ_LOG(4,(ice_st->obj_name, "TCP failed after %ds:%03d", msec/1000, msec%1000));
 					comp->tcp.sock = NULL;	/* it's important for sock destroy*/

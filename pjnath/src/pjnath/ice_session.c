@@ -1135,6 +1135,8 @@ static pj_status_t prune_checklist(pj_ice_sess *ice,
     return PJ_SUCCESS;
 }
 
+#define ICE_HEART_BEAT_TICK		3
+
 /* Timer callback */
 static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
 {
@@ -1191,7 +1193,7 @@ static void on_timer(pj_timer_heap_t *th, pj_timer_entry *te)
 		ice_keep_alive(ice, PJ_TRUE);
 	break;
 	case TIMER_HEART_BEAT:
-		ice_heart_beat(ice, 5);
+		ice_heart_beat(ice, ICE_HEART_BEAT_TICK);
 		break;
     case TIMER_NONE:
 	/* Nothing to do, just to get rid of gcc warning */
@@ -1292,6 +1294,8 @@ done:
 	delay.msec = (PJ_ICE_SESS_KEEP_ALIVE_MIN + 
 		      (pj_rand() % PJ_ICE_SESS_KEEP_ALIVE_MAX_RAND)) * 1000 / 
 		     ice->comp_cnt;
+	if (ice->lan_mode)
+		delay.msec /= 2;
 	pj_time_val_normalize(&delay);
 
 	pj_timer_heap_schedule_w_grp_lock(ice->stun_cfg.timer_heap,
@@ -1308,13 +1312,15 @@ done:
 /* Proc heart beat */
 static void ice_heart_beat(pj_ice_sess *ice, int val)
 {
-	pj_time_val delay = { 5, 0 };
+	pj_time_val delay = { ICE_HEART_BEAT_TICK, 0 };
 
 	//delay.msec = 5000;
 	//pj_time_val_normalize(&delay);
 
 	ice->beat_counter += val;
-	LOG4((ice->obj_name, "====beat_counter: %d", ice->beat_counter));
+	if (ice->beat_counter > 15)
+		LOG4((ice->obj_name, "====beat_counter: %d", ice->beat_counter));
+
 	if (ice->beat_counter >= 25)
 	{
 		/* Notify app about ICE disconnect */

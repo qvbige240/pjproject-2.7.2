@@ -303,6 +303,8 @@ static pj_status_t set_args(ice_info_t *param)
 	pjsua_app_config *cfg = &app_config;
 	pjsua_acc_config *cur_acc;
 
+	cfg->log_cfg.log_filename = pj_str("./log.txt");
+
 	cfg->acc_cnt = 0;
 	cur_acc = cfg->acc_cfg;
 
@@ -676,7 +678,12 @@ static void on_nat_detect(const pj_stun_nat_detect_result *res)
  */
 static void on_ice_negotiation_success(void *tp, void *param)
 {
-	PJ_LOG(4, (THIS_FILE, "========ice negotiation success."));
+	pjsua_callback_param *p = (pjsua_callback_param *)param;
+	int state = p->status;
+	pjsua_call_id call_id = p->call_id;
+
+	PJ_LOG(4, (THIS_FILE, "========ice negotiation success %d %p.", call_id, tp));
+	
 	socket_client *client = (socket_client *)app_config.client;
 	if (app_config.is_destroying) return;
 
@@ -692,15 +699,18 @@ static void on_ice_negotiation_success(void *tp, void *param)
  */
 static void on_ice_connection_success(void *tp, void *param)
 {
+	pjsua_callback_param *p = (pjsua_callback_param *)param;
+	int state = p->status;
+	pjsua_call_id call_id = p->call_id;
 	socket_client *client = (socket_client *)app_config.client;
 	if (app_config.is_destroying) return;
 
-	PJ_LOG(4, (THIS_FILE, "========ice connection success."));
+	PJ_LOG(4, (THIS_FILE, "========ice connection success %d %p.", call_id, tp));
 	if (tp && client) {
 		client->tp = tp;
 		client->connected = 1;		
 		ice_client_param param = {0};
-		param.call_id = current_call;
+		param.call_id = call_id;	//current_call;
 		param.status = 0;
 		if (client->cb.on_connect_success)
 			client->cb.on_connect_success(client->ctx, (void*)&param);
@@ -792,7 +802,7 @@ static void on_ice_socket_disconnect(void *tp, void *param)
 		if (client->cb.on_sock_disconnect)
 			client->cb.on_sock_disconnect(client->ctx, (void*)&param);
 		else
-			PJ_LOG(3, (THIS_FILE, "without register callback function: on_sock_disconnect."));
+			PJ_LOG(3, (THIS_FILE, "without register callback: on_sock_disconnect."));
 	} else {
 		PJ_LOG(3, (THIS_FILE, "null pointer error."));
 	}

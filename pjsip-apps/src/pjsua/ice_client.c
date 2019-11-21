@@ -1105,14 +1105,8 @@ on_error:
 	return status;
 }
 
-//pj_status_t app_run(void)
-//{
-//	pj_status_t status;
-//
-//	status = pjsua_start();
-//
-//	return status;
-//}
+
+/* same as ice_client_login */
 pj_status_t ice_client_register(iclient_callback *ctx)
 {
 	pj_status_t status;
@@ -1128,6 +1122,21 @@ pj_status_t ice_client_register(iclient_callback *ctx)
 	client->cb.on_socket_clearing = ctx->on_socket_clearing;
 	client->cb.on_socket_writable = ctx->on_socket_writable;
 	client->cb.on_receive_message = ctx->on_receive_message;
+
+	status = pjsua_start();
+
+	return status;
+}
+/* same as ice_client_register */
+pj_status_t ice_client_login(iclient_callback *cb, void *ctx)
+{
+	pj_status_t status;
+	socket_client *client = app_config.client;
+
+	PJ_ASSERT_RETURN(ctx, PJ_EINVAL);
+
+	client->ctx = ctx;
+	memcpy(&client->cb, cb, sizeof(client->cb));
 
 	status = pjsua_start();
 
@@ -1216,6 +1225,11 @@ pj_status_t ice_thread_register(const char *thread_name)
 		PJ_PERROR(4, (THIS_FILE, status, "ice_thread_register"));
 		//PJSUA2_RAISE_ERROR(status);
 	}
+}
+
+pj_bool_t ice_thread_is_registered(void)
+{
+	return pj_thread_is_registered();
 }
 
 pj_pool_t* ice_pool_get()

@@ -23,7 +23,7 @@ CC=gcc -O2 -I$(INC) -I$(INCSYS)
 WEC_LDFLAGS=-L$(LIB) -L$(LIBSYS)
 STRIP=strip
 
-TARGET = sample
+TARGET = sample-sip
 SRCS := *.c
 LIBS= -lssl -lcrypto -luuid -lm -lrt -lpthread
 

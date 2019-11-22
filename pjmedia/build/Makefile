@@ -121,12 +121,12 @@ export PJMEDIA_VIDEODEV_LDFLAGS += $(PJMEDIA_LDLIB) \
 # but don't want to use the rest of the media framework.
 #
 export PJSDP_SRCDIR = ../src/pjmedia
-export PJSDP_OBJS += 	$(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
+export PJSDP_OBJS += $(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
 			errno.o sdp.o sdp_cmp.o sdp_neg.o
 export PJSDP_CFLAGS += $(_CFLAGS)
 export PJSDP_CXXFLAGS += $(_CXXFLAGS)
-export PJSDP_LDFLAGS += $(PJMEDIA_LDLIB) \
-			$(PJLIB_LDLIB) \
+#export PJSDP_LDFLAGS += $(PJMEDIA_LDLIB)
+export PJSDP_LDFLAGS += $(PJLIB_LDLIB) \
 			$(PJLIB_UTIL_LDLIB) \
 			$(_LDFLAGS)
 
@@ -231,8 +231,11 @@ $(PJMEDIA_AUDIODEV_LIB) $(PJMEDIA_AUDIODEV_SONAME): $(PJMEDIA_LIB) $(PJMEDIA_SON
 
 pjsdp: $(PJSDP_LIB)
 $(PJSDP_SONAME): $(PJSDP_LIB)
-$(PJSDP_LIB) $(PJSDP_SONAME): $(PJMEDIA_LIB) $(PJMEDIA_SONAME)
+#$(PJSDP_LIB) $(PJSDP_SONAME): $(PJMEDIA_LIB) $(PJMEDIA_SONAME)
+$(PJSDP_LIB) $(PJSDP_SONAME):
 	$(MAKE) -f $(RULES_MAK) APP=PJSDP app=pjsdp $(LIBDIR)/$@
+#	$(MAKE) -f $(RULES_MAK) APP=PJSDP app=pjsdp $(subst /,$(HOST_PSEP),$(LIBDIR)/$@)
+#	$(MAKE) -f $(RULES_MAK) APP=PJSDP app=pjsdp $(LIBDIR)/$@
 
 pjmedia-test: $(PJMEDIA_TEST_EXE)
 $(PJMEDIA_TEST_EXE): $(PJMEDIA_LIB) $(PJMEDIA_SONAME)

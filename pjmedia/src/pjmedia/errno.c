@@ -216,7 +216,8 @@ PJ_DEF(pj_str_t) pjmedia_strerror( pj_status_t statcode,
 	int err = statcode - PJMEDIA_LIBSRTP_ERRNO_START;
 	pj_str_t msg;
 	
-	msg = pj_str((char*)get_libsrtp_errstr(err));
+	//msg = pj_str((char*)get_libsrtp_errstr(err));
+	msg = pj_str((char*)"libsrtp error");
 
 	errstr.ptr = buf;
 	pj_strncpy_with_null(&errstr, &msg, bufsize);

@@ -8,18 +8,14 @@ LIBSYS = /usr/lib
 INC = $(INSTALL)/include
 INCSYS = /usr/include
 
-STATIC_LIBS=$(LIB)/libpjsua-x86_64-unknown-linux-gnu.a \
-$(LIB)/libpjsip-ua-x86_64-unknown-linux-gnu.a $(LIB)/libpjsip-simple-x86_64-unknown-linux-gnu.a \
-$(LIB)/libpjsip-x86_64-unknown-linux-gnu.a $(LIB)/libpjmedia-codec-x86_64-unknown-linux-gnu.a \
-$(LIB)/libpjmedia-x86_64-unknown-linux-gnu.a $(LIB)/libpjmedia-videodev-x86_64-unknown-linux-gnu.a \
-$(LIB)/libpjmedia-audiodev-x86_64-unknown-linux-gnu.a $(LIB)/libpjmedia-x86_64-unknown-linux-gnu.a \
-$(LIB)/libpjnath-x86_64-unknown-linux-gnu.a $(LIB)/libpjlib-util-x86_64-unknown-linux-gnu.a  \
-$(LIB)/libsrtp-x86_64-unknown-linux-gnu.a $(LIB)/libresample-x86_64-unknown-linux-gnu.a \
-$(LIB)/libgsmcodec-x86_64-unknown-linux-gnu.a $(LIB)/libspeex-x86_64-unknown-linux-gnu.a \
-$(LIB)/libilbccodec-x86_64-unknown-linux-gnu.a $(LIB)/libwebrtc-x86_64-unknown-linux-gnu.a \
+STATIC_LIBS=$(LIB)/libpjsip-ua-x86_64-unknown-linux-gnu.a \
+$(LIB)/libpjsip-simple-x86_64-unknown-linux-gnu.a \
+$(LIB)/libpjsdp-x86_64-unknown-linux-gnu.a \
+$(LIB)/libpjsip-x86_64-unknown-linux-gnu.a \
+$(LIB)/libpjlib-util-x86_64-unknown-linux-gnu.a \
 $(LIB)/libpj-x86_64-unknown-linux-gnu.a
 
-CC=gcc -O2 -I$(INC) -I$(INCSYS)
+CC=gcc -g -O0 -I$(INC) -I$(INCSYS)
 WEC_LDFLAGS=-L$(LIB) -L$(LIBSYS)
 STRIP=strip
 
@@ -29,7 +25,7 @@ LIBS= -lssl -lcrypto -luuid -lm -lrt -lpthread
 
 all: 
 	$(CC) $(WEC_LDFLAGS) $(SRCS) -o $(TARGET) $(STATIC_LIBS) $(LIBS)
-	$(STRIP) $(TARGET) 
+#	$(STRIP) $(TARGET) 
 
 clean:
 	rm -f *.o 

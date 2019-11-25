@@ -133,6 +133,7 @@ static void call_on_rx_offer(pjsip_inv_session *inv, const pjmedia_sdp_session *
 static void call_on_media_update(pjsip_inv_session *inv, pj_status_t status);
 
 static int make_call(char *uri);
+static void hangup_all(void);
 
 static int pjsip_module_init()
 {
@@ -231,6 +232,13 @@ int sip_client_init(user_info_t *info)
 //int sip_client_register(iclient_callback *ctx);
 int sip_client_login(iclient_callback *cb, void *ctx)
 {
+    client_internal *client = &app.client;
+
+	PJ_ASSERT_RETURN(ctx, PJ_EINVAL);
+
+	client->ctx = ctx;
+	memcpy(&client->cb, cb, sizeof(client->cb));
+
     sip_register(&app);
 
     return 0;
@@ -245,7 +253,7 @@ int sip_client_call(char *uri)
 
 void sip_client_hangup(void)
 {
-    return;
+    hangup_all();
 }
 
 static void destroy_call(sip_call_t *call)
@@ -370,6 +378,23 @@ static void call_on_state_changed(pjsip_inv_session *inv, pjsip_event *e)
         PJ_LOG(3, (THIS_FILE, "Call %d: state changed to %s",
                         call - app.call, pjsip_inv_state_name(inv->state)));
     }
+
+    client_internal *client = &app.client;
+    if (inv->state == PJSIP_INV_STATE_CONFIRMED)
+    {
+        client->invited = 1;
+        sip_client_param param = {0};
+        param.call_id = call - app.call; //current_call;
+        param.status = 0;
+        if (client->cb.on_invite_confirmed)
+            client->cb.on_invite_confirmed(client->ctx, (void *)&param);
+        else
+            PJ_LOG(3, (THIS_FILE, "without register callback function: on_state_confirmed."));
+    }
+    else
+    {
+        client->invited = 0;
+    }
 }
 static void call_on_rx_offer(pjsip_inv_session *inv, const pjmedia_sdp_session *offer)
 {
@@ -466,7 +491,8 @@ static pj_bool_t on_rx_request(pjsip_rx_data *rdata)
     }
     pj_sockaddr_print(&hostaddr, hostip, sizeof(hostip), 2);
     //pj_ansi_sprintf(temp, "<sip:sipecho@%s:%d>", hostip, sip_port);
-    pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", app.info.account, hostip, sip_port);
+    //pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", app.info.account, hostip, sip_port);
+    pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", app.info.account, app.info.server, sip_port);
     local_uri = pj_str(temp);
     TRACE_((THIS_FILE, "callback===========on_rx_request local_uri:%s", temp));
 
@@ -557,7 +583,9 @@ static int make_call(char *uri)
 	pj_sockaddr_print(&hostaddr, hostip, sizeof(hostip), 2);
 
     user_info_t *info = &app.info;
-	pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", info->account, hostip, sip_port);
+	//pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", info->account, hostip, sip_port);
+	//pj_ansi_sprintf(temp, "<sip:%s@%s:%d>", info->account, info->server, sip_port);
+	pj_ansi_sprintf(temp, "<sip:%s@%s>", info->account, info->server);
 	//pj_ansi_sprintf(temp, "<sip:timaB@172.20.25.40:5060>");
 	local_uri = pj_str(temp);
 
@@ -591,7 +619,7 @@ static int make_call(char *uri)
     char tmp_sdp[512] = {0};
     snprintf(tmp_sdp, 512, "v=0\r\n"
                            "o=%s 1 1 IN IP4 %s\r\n"
-                           "s= \r\n"
+                           "s=sip \r\n"
                            "c=IN IP4 %s\r\n"
                            "t=0 0\r\n"
                            "m=audio %s RTP/AVP 0\r\n"
@@ -644,4 +672,23 @@ static int make_call(char *uri)
 on_error:
     sip_perror(THIS_FILE, "An error has occurred.", status);
     return 1;
+}
+
+static void hangup_all(void)
+{
+    unsigned i;
+    for (i = 0; i < MAX_CALLS; ++i)
+    {
+        sip_call_t *call = &app.call[i];
+
+        if (call->inv && call->inv->state <= PJSIP_INV_STATE_CONFIRMED)
+        {
+            pj_status_t status;
+            pjsip_tx_data *tdata;
+
+            status = pjsip_inv_end_session(call->inv, PJSIP_SC_BUSY_HERE, NULL, &tdata);
+            if (status == PJ_SUCCESS && tdata)
+                pjsip_inv_send_msg(call->inv, tdata);
+        }
+    }
 }

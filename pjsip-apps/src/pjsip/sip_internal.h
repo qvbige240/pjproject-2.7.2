@@ -16,6 +16,20 @@ extern "C" {
 #define MAX_CALLS	8
 #define TRACE_(x)   PJ_LOG(3,x)
 
+
+typedef struct client_internal
+{
+	void				*ctx;
+	iclient_callback	cb;
+
+	// void				*tp;
+	// int				connected;
+	// int				nego_complete;
+	int                 invited;
+
+	int			        reg_status;
+} client_internal;
+
 typedef struct sip_call_t
 {
     pjsip_inv_session	*inv;
@@ -37,6 +51,7 @@ struct sip_data
     pj_bool_t           enable_msg_logging;
 
     user_info_t         info;
+    client_internal     client;
 };
 
 void sip_perror(const char *sender, const char *title, pj_status_t status);

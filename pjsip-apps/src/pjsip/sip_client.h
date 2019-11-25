@@ -17,8 +17,8 @@ typedef struct user_info_s
 {
 	char	        account[32];	// timaA
 	char	        passwd[32];		// timaA
-	char	        server[32];	    // "172.20.25.40"
 	char	        realm[32];	    // "91carnet.com"
+	char	        server[32];	    // "172.20.25.40"
 	char	        sip_port[16];	// "5060"
 
 	char	        turn[32];	    // "172.17.13.8:3488"
@@ -26,12 +26,21 @@ typedef struct user_info_s
 	char	        username[32];	// username2
 	char	        password[32];	// password2
 
-	int		conn_type;
+	int             conn_type;
 } user_info_t;
+
+
+typedef struct sip_client_param
+{
+	int			call_id;
+	int			status;
+} sip_client_param;
 
 typedef struct iclient_callback
 {
 	void (*on_register_status)(void *ctx, void *param);
+
+	void (*on_invite_confirmed)(void *ctx, void *param);
 
 	void (*on_connect_success)(void *ctx, void *param);
 

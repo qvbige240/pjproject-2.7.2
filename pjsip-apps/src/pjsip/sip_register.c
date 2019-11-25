@@ -218,6 +218,8 @@ struct client
     /* Additional results */
     int             interval;
     int             next_reg;
+
+    struct sip_data *app;
 };
 
 /* regc callback */
@@ -232,10 +234,27 @@ static void client_cb(struct pjsip_regc_cbparam *param)
     status = pjsip_regc_get_info(param->regc, &info);
     pj_assert(status == PJ_SUCCESS);
     PJ_UNUSED_ARG(status);
-    TRACE_((THIS_FILE, "callback===========regc client_cb code(%d) uri: %s %d expiration: %d, next reg: %d",
-            param->code, info.client_uri, info.interval, param->expiration, info.next_reg));
     client->error = (param->status != PJ_SUCCESS);
     client->code = param->code;
+
+    TRACE_((THIS_FILE, "callback===========regc client_cb code(%d) uri: %s %d expiration: %d, next reg: %d",
+            param->code, info.client_uri, info.interval, param->expiration, info.next_reg));
+
+    client_internal *c = &(client->app->client);
+    if (c->cb.on_register_status)
+    {
+        sip_client_param data = {0};
+        data.call_id = 0;
+        data.status = param->code;
+        if (param->code != c->reg_status)
+            c->cb.on_register_status(c->ctx, (void *)&data);
+    }
+    else
+    {
+        PJ_LOG(3, (THIS_FILE, "without register callback: on_register_status."));
+    }
+    c->reg_status = param->code;
+
 
     if (client->error)
         return;
@@ -286,9 +305,10 @@ static int do_user_register(const struct client *client_cfg, struct sip_data *ap
     struct client *client_result = pj_pool_zalloc(app->pool, sizeof(struct client));
     //client_result->destroy_on_cb = client_cfg->destroy_on_cb;
     client_result->destroy_on_cb = PJ_FALSE;
+    client_result->app = app;
 
     //pjsip_endpoint *endpt = app->endpt;
-    status = pjsip_regc_create(endpt, &client_result, &client_cb, &regc);
+    status = pjsip_regc_create(endpt, client_result, &client_cb, &regc);
     if (status != PJ_SUCCESS)
         return -100;
 

@@ -52,10 +52,13 @@ static void on_register_status(void *ctx, void *param)
 {
     printf("%s:on_register_status\n", __FILE__);
 }
-
-static void on_invite_confirmed(void *ctx, void *param)
+static void on_call_confirmed(void *ctx, void *param)
 {
-    printf("%s:on_invite_confirmed\n", __FILE__);
+    printf("%s:on_call_confirmed\n", __FILE__);
+}
+static void on_call_disconnect(void *ctx, void *param)
+{
+    printf("%s:on_call_disconnect\n", __FILE__);
 }
 //extern void file_entry(void);
 //extern void file_exit(void);
@@ -207,7 +210,8 @@ int main_func(int argc, char *argv[])
 
     iclient_callback client_cb = {0};
     client_cb.on_register_status = on_register_status;
-    client_cb.on_invite_confirmed = on_invite_confirmed;
+    client_cb.on_call_confirmed = on_call_confirmed;
+    client_cb.on_call_disconnect = on_call_disconnect;
     sip_client_login(&client_cb, &client_cb);
 
     // 	pj_caching_pool		cache;	    /**< Global pool factory.		*/

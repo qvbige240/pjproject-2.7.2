@@ -366,11 +366,25 @@ static void call_on_state_changed(pjsip_inv_session *inv, pjsip_event *e)
     if (!call)
         return;
     PJ_UNUSED_ARG(e);
+
+    client_internal *client = &app.client;
+
     if (inv->state == PJSIP_INV_STATE_DISCONNECTED)
     {
         PJ_LOG(3, (THIS_FILE, "Call %d: DISCONNECTED [reason=%d (%s)]",
                    call - app.call, inv->cause,
                    pjsip_get_status_text(inv->cause)->ptr));
+        // code
+        // 420 (Bad Extension)
+        client->invited = 0;
+        sip_client_param param = {0};
+        param.call_id = call - app.call; //current_call;
+        param.status = inv->cause;
+        if (client->cb.on_call_disconnect)
+            client->cb.on_call_disconnect(client->ctx, (void *)&param);
+        else
+            PJ_LOG(3, (THIS_FILE, "without register callback function: on_call_disconnect."));
+
         destroy_call(call);
     }
     else
@@ -379,17 +393,16 @@ static void call_on_state_changed(pjsip_inv_session *inv, pjsip_event *e)
                         call - app.call, pjsip_inv_state_name(inv->state)));
     }
 
-    client_internal *client = &app.client;
     if (inv->state == PJSIP_INV_STATE_CONFIRMED)
     {
         client->invited = 1;
         sip_client_param param = {0};
         param.call_id = call - app.call; //current_call;
         param.status = 0;
-        if (client->cb.on_invite_confirmed)
-            client->cb.on_invite_confirmed(client->ctx, (void *)&param);
+        if (client->cb.on_call_confirmed)
+            client->cb.on_call_confirmed(client->ctx, (void *)&param);
         else
-            PJ_LOG(3, (THIS_FILE, "without register callback function: on_state_confirmed."));
+            PJ_LOG(3, (THIS_FILE, "without register callback function: on_call_confirmed."));
     }
     else
     {

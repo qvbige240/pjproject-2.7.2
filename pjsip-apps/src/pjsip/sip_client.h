@@ -40,7 +40,9 @@ typedef struct iclient_callback
 {
 	void (*on_register_status)(void *ctx, void *param);
 
-	void (*on_invite_confirmed)(void *ctx, void *param);
+	void (*on_call_confirmed)(void *ctx, void *param);
+
+	void (*on_call_disconnect)(void *ctx, void *param);
 
 	void (*on_connect_success)(void *ctx, void *param);
 

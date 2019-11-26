@@ -169,8 +169,8 @@ int main_func(int argc, char *argv[])
         strcpy(info.realm, "91carnet.com");
         //strcpy(info.realm, "172.20.25.40");
 
-        strcpy(info.turn, server);
-        strcpy(info.turn_port, "3488");
+        strcpy(info.relay, server);
+        strcpy(info.relay_port, "3488");
         strcpy(info.username, "timaA");
         strcpy(info.password, "timaA");
         sprintf(remote_uri, "sip:timaB@%s", info.server);
@@ -182,8 +182,8 @@ int main_func(int argc, char *argv[])
         strcpy(info.server, server);
         strcpy(info.realm, "91carnet.com");
 
-        strcpy(info.turn, server);
-        strcpy(info.turn_port, "3488");
+        strcpy(info.relay, server);
+        strcpy(info.relay_port, "3488");
         strcpy(info.username, "timaC");
         strcpy(info.password, "timaC");
         sprintf(remote_uri, "sip:timaA@%s", info.server);
@@ -197,8 +197,8 @@ int main_func(int argc, char *argv[])
         strcpy(info.realm, "91carnet.com");
         //strcpy(info.realm, "172.20.25.40");
 
-        strcpy(info.turn, server);
-        strcpy(info.turn_port, "3488");
+        strcpy(info.relay, server);
+        strcpy(info.relay_port, "3488");
         strcpy(info.username, "timaB");
         strcpy(info.password, "timaB");
         sprintf(remote_uri, "sip:timaA@%s", info.server);

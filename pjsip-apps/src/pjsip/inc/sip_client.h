@@ -8,6 +8,7 @@
 #ifndef SIP_CLIENT_H
 #define SIP_CLIENT_H
 
+#include "sip_typedef.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,8 +22,8 @@ typedef struct user_info_s
 	char	        server[32];	    // "172.20.25.40"
 	char	        sip_port[16];	// "5060"
 
-	char	        turn[32];	    // "172.17.13.8:3488"
-	char	        turn_port[16];	// "3488"
+	char	        relay[32];	    // "172.17.13.8:3488"
+	char	        relay_port[16];	// "3488"
 	char	        username[32];	// username2
 	char	        password[32];	// password2
 

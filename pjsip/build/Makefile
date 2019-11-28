@@ -16,6 +16,7 @@ PJLIB_LIB:=../../pjlib/lib/libpj-$(TARGET_NAME)$(LIBEXT)
 PJLIB_UTIL_LIB:=../../pjlib-util/lib/libpjlib-util-$(TARGET_NAME)$(LIBEXT)
 PJNATH_LIB:=../../pjnath/lib/libpjnath-$(TARGET_NAME)$(LIBEXT)
 PJMEDIA_LIB:=../../pjmedia/lib/libpjmedia-$(TARGET_NAME)$(LIBEXT)
+PJSDP_LIB:=../../pjmedia/lib/libpjsdp-$(TARGET_NAME)$(LIBEXT)
 
 export PJSIP_LIB:=libpjsip-$(TARGET_NAME)$(LIBEXT)
 export PJSIP_UA_LIB:=libpjsip-ua-$(TARGET_NAME)$(LIBEXT)
@@ -85,7 +86,6 @@ export PJSIP_UA_CFLAGS += $(_CFLAGS)
 export PJSIP_UA_CXXFLAGS += $(_CXXFLAGS)
 export PJSIP_UA_LDFLAGS += $(PJSIP_SIMPLE_LDLIB) \
 			   $(PJSIP_LDLIB) \
-			   $(PJMEDIA_LDLIB) \
 			   $(PJLIB_UTIL_LDLIB) \
 			   $(PJLIB_LDLIB) \
 			   $(_LDFLAGS)
@@ -197,7 +197,65 @@ export TEST_LDFLAGS += $(PJSIP_LDLIB) \
 		       $(_LDFLAGS)
 export TEST_EXE := pjsip-test-$(TARGET_NAME)$(HOST_EXE)
 
-	
+
+###############################################################################
+# Defines for building test application
+#
+export INVITE_SRCDIR = ../src/test
+export INVITE_OBJS += msg_logger_inv.o test_inv.o inv_offer_answer_test.o
+# export INVITE_OBJS += dlg_core_test.o dns_test.o msg_err_test.o \
+# 		    msg_logger.o msg_test.o multipart_test.o regc_test.o \
+# 		    test.o transport_loop_test.o transport_tcp_test.o \
+# 		    transport_test.o transport_udp_test.o \
+# 		    tsx_basic_test.o tsx_bench.o tsx_uac_test.o \
+# 		    tsx_uas_test.o txdata_test.o uri_test.o \
+# 		    inv_offer_answer_test.o
+export INVITE_CFLAGS += $(_CFLAGS)
+export INVITE_CXXFLAGS += $(_CXXFLAGS)
+export INVITE_LDFLAGS += $(PJSIP_LDLIB) \
+		       $(PJSIP_UA_LDLIB) \
+		       $(PJSIP_SIMPLE_LDLIB) \
+		       $(PJSDP_LDLIB) \
+		       $(PJLIB_UTIL_LDLIB) \
+		       $(PJLIB_LDLIB) \
+		       $(_LDFLAGS)
+export INVITE_EXE := pjsip-invite-$(TARGET_NAME)$(HOST_EXE)
+
+
+###############################################################################
+# Defines for building test application
+#
+export OFFER_SRCDIR = ../src/test
+export OFFER_OBJS += msg_logger_inv.o test_inv.o inv_offer_test.o
+export OFFER_CFLAGS += $(_CFLAGS)
+export OFFER_CXXFLAGS += $(_CXXFLAGS)
+export OFFER_LDFLAGS += $(PJSIP_LDLIB) \
+		       $(PJSIP_UA_LDLIB) \
+		       $(PJSIP_SIMPLE_LDLIB) \
+		       $(PJSDP_LDLIB) \
+		       $(PJLIB_UTIL_LDLIB) \
+		       $(PJLIB_LDLIB) \
+		       $(_LDFLAGS)
+export OFFER_EXE := pjsip-offer-$(TARGET_NAME)$(HOST_EXE)
+
+
+###############################################################################
+# Defines for building test application
+#
+export ANSWER_SRCDIR = ../src/test
+export ANSWER_OBJS += msg_logger_inv.o test_inv.o inv_answer_test.o
+export ANSWER_CFLAGS += $(_CFLAGS)
+export ANSWER_CXXFLAGS += $(_CXXFLAGS)
+export ANSWER_LDFLAGS += $(PJSIP_LDLIB) \
+		       $(PJSIP_UA_LDLIB) \
+		       $(PJSIP_SIMPLE_LDLIB) \
+		       $(PJSDP_LDLIB) \
+		       $(PJLIB_UTIL_LDLIB) \
+		       $(PJLIB_LDLIB) \
+		       $(_LDFLAGS)
+export ANSWER_EXE := pjsip-answer-$(TARGET_NAME)$(HOST_EXE)
+
+
 export CC_OUT CC AR RANLIB HOST_MV HOST_RM HOST_RMDIR HOST_MKDIR OBJEXT LD LDOUT 
 ###############################################################################
 # Main entry
@@ -207,7 +265,7 @@ TARGETS := $(PJSIP_LIB) $(PJSIP_SONAME) \
 	   $(PJSIP_SIMPLE_LIB) $(PJSIP_SIMPLE_SONAME) \
 	   $(PJSIP_UA_LIB) $(PJSIP_UA_SONAME) \
 	   $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME) 
-TARGETS_EXE := $(TEST_EXE)
+TARGETS_EXE := $(TEST_EXE) $(INVITE_EXE) $(OFFER_EXE) $(ANSWER_EXE)
 
 all: $(TARGETS) $(TARGETS_EXE)
 
@@ -235,6 +293,7 @@ distclean: realclean
 .PHONY: $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME)
 #.PHONY: $(PJSUA2_LIB_LIB) $(PJSUA2_LIB_SONAME)
 .PHONY: $(TEST_EXE)
+.PHONY: $(INVITE_EXE)
 #.PHONY: $(PJSUA2_TEST_EXE)
 
 pjsip: $(PJSIP_LIB)
@@ -269,6 +328,33 @@ $(TEST_EXE): $(PJSIP_SIMPLE_LIB) $(PJSIP_SIMPLE_SONAME)
 $(TEST_EXE): $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME)
 $(TEST_EXE):
 	$(MAKE) -f $(RULES_MAK) APP=TEST app=pjsip-test $(subst /,$(HOST_PSEP),$(BINDIR)/$@)
+
+pjsip-invite: $(INVITE_EXE)
+$(INVITE_EXE): $(PJSIP_LIB) $(PJSIP_SONAME)
+$(INVITE_EXE): $(PJSDP_LIB) $(PJSDP_SONAME)
+$(INVITE_EXE): $(PJSIP_UA_LIB) $(PJSIP_UA_SONAME)
+$(INVITE_EXE): $(PJSIP_SIMPLE_LIB) $(PJSIP_SIMPLE_SONAME)
+#$(INVITE_EXE): $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME)
+$(INVITE_EXE):
+	$(MAKE) -f $(RULES_MAK) APP=INVITE app=pjsip-invite $(subst /,$(HOST_PSEP),$(BINDIR)/$@)
+
+pjsip-offer: $(OFFER_EXE)
+$(OFFER_EXE): $(PJSIP_LIB) $(PJSIP_SONAME)
+$(OFFER_EXE): $(PJSDP_LIB) $(PJSDP_SONAME)
+$(OFFER_EXE): $(PJSIP_UA_LIB) $(PJSIP_UA_SONAME)
+$(OFFER_EXE): $(PJSIP_SIMPLE_LIB) $(PJSIP_SIMPLE_SONAME)
+#$(OFFER_EXE): $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME)
+$(OFFER_EXE):
+	$(MAKE) -f $(RULES_MAK) APP=OFFER app=pjsip-offer $(subst /,$(HOST_PSEP),$(BINDIR)/$@)
+
+pjsip-answer: $(ANSWER_EXE)
+$(ANSWER_EXE): $(PJSIP_LIB) $(PJSIP_SONAME)
+$(ANSWER_EXE): $(PJSDP_LIB) $(PJSDP_SONAME)
+$(ANSWER_EXE): $(PJSIP_UA_LIB) $(PJSIP_UA_SONAME)
+$(ANSWER_EXE): $(PJSIP_SIMPLE_LIB) $(PJSIP_SIMPLE_SONAME)
+#$(ANSWER_EXE): $(PJSUA_LIB_LIB) $(PJSUA_LIB_SONAME)
+$(ANSWER_EXE):
+	$(MAKE) -f $(RULES_MAK) APP=ANSWER app=pjsip-answer $(subst /,$(HOST_PSEP),$(BINDIR)/$@)
 
 #pjsua2-test: $(PJSUA2_TEST_EXE)
 #$(PJSUA2_TEST_EXE): $(PJSIP_LIB) $(PJSIP_SONAME)
@@ -310,6 +396,9 @@ clean:
 	$(MAKE) -f $(RULES_MAK) APP=PJSUA_LIB app=pjsua-lib $@
 #	$(MAKE) -f $(RULES_MAK) APP=PJSUA2_LIB app=pjsua2-lib $@
 	$(MAKE) -f $(RULES_MAK) APP=TEST app=pjsip-test $@
+	$(MAKE) -f $(RULES_MAK) APP=INVITE app=pjsip-invite $@
+	$(MAKE) -f $(RULES_MAK) APP=OFFER app=pjsip-offer $@
+	$(MAKE) -f $(RULES_MAK) APP=ANSWER app=pjsip-answer $@
 #	$(MAKE) -f $(RULES_MAK) APP=PJSUA2_TEST app=pjsua2-test $@
 
 depend:
@@ -319,8 +408,14 @@ depend:
 	$(MAKE) -f $(RULES_MAK) APP=PJSUA_LIB app=pjsua-lib $@
 #	$(MAKE) -f $(RULES_MAK) APP=PJSUA2_LIB app=pjsua2-lib $@
 	$(MAKE) -f $(RULES_MAK) APP=TEST app=pjsip-test $@
+	$(MAKE) -f $(RULES_MAK) APP=INVITE app=pjsip-invite $@
+	$(MAKE) -f $(RULES_MAK) APP=OFFER app=pjsip-offer $@
+	$(MAKE) -f $(RULES_MAK) APP=ANSWER app=pjsip-answer $@
 #	$(MAKE) -f $(RULES_MAK) APP=PJSUA2_TEST app=pjsua2-test $@
 	echo '$(BINDIR)/$(TEST_EXE): $(PJMEDIA_LIB) $(LIBDIR)/$(PJSUA_LIB_LIB) $(LIBDIR)/$(PJSIP_SIMPLE_LIB) $(LIBDIR)/$(PJSIP_UA_LIB) $(LIBDIR)/$(PJSIP_LIB) $(PJNATH_LIB) $(PJLIB_UTIL_LIB) $(PJLIB_LIB)' >> .pjsip-test-$(TARGET_NAME).depend
+	echo '$(BINDIR)/$(INVITE_EXE): $(PJSDP_LIB) $(LIBDIR)/$(PJSIP_SIMPLE_LIB) $(LIBDIR)/$(PJSIP_UA_LIB) $(LIBDIR)/$(PJSIP_LIB) $(PJLIB_UTIL_LIB) $(PJLIB_LIB)' >> .pjsip-invite-$(TARGET_NAME).depend
+	echo '$(BINDIR)/$(OFFER_EXE): $(PJSDP_LIB) $(LIBDIR)/$(PJSIP_SIMPLE_LIB) $(LIBDIR)/$(PJSIP_UA_LIB) $(LIBDIR)/$(PJSIP_LIB) $(PJLIB_UTIL_LIB) $(PJLIB_LIB)' >> .pjsip-offer-$(TARGET_NAME).depend
+	echo '$(BINDIR)/$(ANSWER_EXE): $(PJSDP_LIB) $(LIBDIR)/$(PJSIP_SIMPLE_LIB) $(LIBDIR)/$(PJSIP_UA_LIB) $(LIBDIR)/$(PJSIP_LIB) $(PJLIB_UTIL_LIB) $(PJLIB_LIB)' >> .pjsip-answer-$(TARGET_NAME).depend
 #	echo '$(BINDIR)/$(PJSUA2_TEST_EXE): $(LIBDIR)/$(PJSUA2_LIB_LIB) $(PJMEDIA_LIB) $(LIBDIR)/$(PJSUA_LIB_LIB) $(LIBDIR)/$(PJSIP_SIMPLE_LIB) $(LIBDIR)/$(PJSIP_UA_LIB) $(LIBDIR)/$(PJSIP_LIB) $(PJNATH_LIB) $(PJLIB_UTIL_LIB) $(PJLIB_LIB)' >> .pjsua2-test-$(TARGET_NAME).depend
 
 realclean:

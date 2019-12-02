@@ -24,6 +24,7 @@ SAMPLES := auddemo \
 	   encdec \
 	   httpdemo \
 	   icedemo \
+	   invtester \
 	   jbsim \
 	   latency \
 	   level \

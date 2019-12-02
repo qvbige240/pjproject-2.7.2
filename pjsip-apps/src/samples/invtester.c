@@ -86,12 +86,12 @@ static void send_request(const pjsip_method *method,
     pj_str_t dummy_sdp_str = 
     {
 	"v=0\r\n"
-	"o=- 3360842071 3360842071 IN IP4 192.168.0.68\r\n"
+	"o=- 3360842071 3360842071 IN IP4 172.17.12.52\r\n"
 	"s=pjmedia\r\n"
-	"c=IN IP4 192.168.0.68\r\n"
+	"c=IN IP4 172.17.12.52\r\n"
 	"t=0 0\r\n"
 	"m=audio 4000 RTP/AVP 0 101\r\n"
-	"a=rtcp:4001 IN IP4 192.168.0.68\r\n"
+	"a=rtcp:4001 IN IP4 172.17.12.52\r\n"
 	"a=rtpmap:0 PCMU/8000\r\n"
 	"a=sendrecv\r\n"
 	"a=rtpmap:101 telephone-event/8000\r\n"

@@ -748,7 +748,9 @@ PJ_DEF(pj_status_t) pj_sock_recvfrom(pj_sock_t sock,
     bzero(server_addr, sizeof(*server_addr));
     server_addr->sin_family = PF_INET;
     server_addr->sin_port = htons(5060);
-    server_addr->sin_addr.s_addr = inet_addr("172.17.13.8");
+    //server_addr->sin_addr.s_addr = inet_addr("115.182.105.80");
+    //server_addr->sin_addr.s_addr = inet_addr("172.17.13.8");
+	server_addr->sin_addr.s_addr = inet_addr("172.20.25.40");
     //server_addr->sin_addr.s_addr = inet_addr("222.209.88.97");
     *fromlen = 28;
 
